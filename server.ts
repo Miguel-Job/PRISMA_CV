@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import mammoth from 'mammoth';
+import nodemailer from 'nodemailer';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -33,7 +34,16 @@ if (apiKey) {
 }
 
 // In-memory demo users storage
-const usersStore: Array<{ id: string; username: string; email: string; fullName: string; password: string; createdAt: string }> = [
+const usersStore: Array<{ id: string; username: string; email: string; fullName: string; password: string; createdAt: string; role?: string }> = [
+  {
+    id: 'user-admin-master',
+    username: 'admin',
+    email: 'admin@prisma.app',
+    fullName: 'Administrador General PRISMA',
+    password: 'Admin2026!',
+    createdAt: '2026-01-01T00:00:00Z',
+    role: 'admin',
+  },
   {
     id: 'user-carlos-1',
     username: 'carlos.mendoza',
@@ -72,7 +82,9 @@ app.post('/api/auth/login', (req, res) => {
 
   const cleanId = String(identifier).trim().toLowerCase();
   const user = usersStore.find(
-    u => u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId
+    u => u.username.toLowerCase() === cleanId ||
+         (cleanId === 'admin.general' && u.username === 'admin') ||
+         u.email.toLowerCase() === cleanId
   );
 
   if (!user || user.password !== password) {
@@ -167,14 +179,48 @@ interface DispatchedEmail {
 const sentEmailsStore: DispatchedEmail[] = [];
 const pendingVerifications: Record<string, { code: string; userData: any; expiresAt: number }> = {};
 
+// Check if Real SMTP credentials are provided in environment
+function getMailTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465,
+    secure: process.env.SMTP_SECURE === 'true' || (!process.env.SMTP_PORT && true),
+    auth: {
+      user,
+      pass,
+    },
+  });
+}
+
+// Mail service status check
+app.get('/api/auth/mail-status', (req, res) => {
+  const isRealSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+  res.json({
+    isRealSmtp,
+    mode: isRealSmtp ? 'real_smtp' : 'simulated_sandbox',
+    configuredUser: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 3)}***@***` : null,
+    host: process.env.SMTP_HOST || (isRealSmtp ? 'smtp.gmail.com' : 'simulado_interno'),
+    message: isRealSmtp
+      ? 'Conexión SMTP activa: los correos se envían a bandejas reales (Gmail/Outlook).'
+      : 'Modo Simulación Sandbox: el código de 6 dígitos se genera y valida de forma interna en la plataforma sin requerir servidor SMTP externo.'
+  });
+});
+
 // Auth 4: Enviar correo automatizado de verificación y bienvenida
-app.post('/api/auth/send-verification-email', (req, res) => {
-  const { email, username, fullName, password } = req.body;
-  if (!email || !username) {
-    return res.status(400).json({ error: 'Correo electrónico y usuario requeridos.' });
+app.post('/api/auth/send-verification-email', async (req, res) => {
+  const { email, fullName, password } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Correo electrónico requerido.' });
   }
 
   const cleanEmail = String(email).trim().toLowerCase();
+  const username = req.body.username
+    ? String(req.body.username).trim().toLowerCase()
+    : cleanEmail.split('@')[0].replace(/[^a-z0-9._-]/g, '');
   const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 
   // Store pending verification for 15 minutes
@@ -182,10 +228,10 @@ app.post('/api/auth/send-verification-email', (req, res) => {
     code,
     userData: {
       id: `user-${Date.now()}`,
-      username: String(username).trim().toLowerCase(),
+      username,
       email: cleanEmail,
       fullName: fullName || 'Profesional Registrado',
-      password: password || 'Talento2026!',
+      password: password || 'Prisma2026!',
       createdAt: new Date().toISOString(),
     },
     expiresAt: Date.now() + 15 * 60 * 1000,
@@ -229,6 +275,27 @@ app.post('/api/auth/send-verification-email', (req, res) => {
     </div>
   `;
 
+  let deliveryMode: 'real_smtp' | 'simulated_sandbox' = 'simulated_sandbox';
+  let realDeliveryError: string | null = null;
+
+  // Attempt real delivery if SMTP is configured
+  const transporter = getMailTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"PRISMA" <${process.env.SMTP_USER}>`,
+        to: cleanEmail,
+        subject: `Código de Confirmación PRISMA: ${code}`,
+        text: `Hola ${fullName || username},\n\nTu código de verificación en PRISMA es: ${code}\nUsuario: ${username}\n`,
+        html: htmlBody,
+      });
+      deliveryMode = 'real_smtp';
+    } catch (err: any) {
+      console.warn('Fallo en envío SMTP real, usando respaldo de sandbox:', err.message);
+      realDeliveryError = err.message;
+    }
+  }
+
   const emailRecord: DispatchedEmail = {
     id: `msg-${Date.now()}`,
     to: cleanEmail,
@@ -246,9 +313,13 @@ app.post('/api/auth/send-verification-email', (req, res) => {
 
   return res.json({
     success: true,
-    message: `Mensaje automatizado enviado con éxito a ${cleanEmail}`,
+    message: deliveryMode === 'real_smtp'
+      ? `Correo real enviado exitosamente a ${cleanEmail}`
+      : `Código de confirmación generado para ${cleanEmail}`,
     emailId: emailRecord.id,
     previewCode: code,
+    deliveryMode,
+    realDeliveryError,
     sentAt: emailRecord.sentAt,
   });
 });

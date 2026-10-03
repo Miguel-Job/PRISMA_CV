@@ -11,8 +11,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // Login form state
-  const [loginIdentifier, setLoginIdentifier] = useState('carlos.mendoza');
-  const [loginPassword, setLoginPassword] = useState('Talento2026!');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Register form state
@@ -110,22 +110,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   // Register initiation -> Dispatches Automated Verification Email
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regFullName || !regUsername || !regPassword || !regEmail) {
-      setErrorMsg('Por favor completa todos los campos, incluyendo tu correo electrónico para enviarte la confirmación.');
+    if (!regFullName.trim() || !regEmail.trim() || !regPassword) {
+      setErrorMsg('Por favor completa todos los campos.');
       return;
     }
 
     setIsLoading(true);
     setErrorMsg('');
 
+    // Automatically derive clean username from email
+    const derivedUsername = regEmail.split('@')[0].trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'usuario';
+    setRegUsername(derivedUsername);
+
     try {
       // Dispatch verification email to user's inbox
-      const res = await sendVerificationEmail(regEmail, regUsername, regFullName, regPassword);
+      const res = await sendVerificationEmail(regEmail, derivedUsername, regFullName.trim(), regPassword);
       if (res.success) {
         setPendingEmail(regEmail);
         setPreviewCode(res.previewCode || null);
         setVerificationStep(true);
-        setSuccessNotice(`Se ha enviado un mensaje automatizado a ${regEmail} con tu código y credenciales.`);
+        setSuccessNotice(`Se ha enviado un código de verificación a ${regEmail}.`);
 
         // Fetch messages for the live inbox view
         const msgs = await fetchInboxMessages(regEmail);
@@ -234,7 +238,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                       : 'text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
-                  Crear Cuenta & Clave
+                  Crear Cuenta
                 </button>
               </div>
 
@@ -250,7 +254,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">
-                      Usuario o Correo Electrónico
+                      Usuario
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -290,27 +294,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     </div>
                   </div>
 
-                  {/* Demo Pre-filled Credentials Helper */}
-                  <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] text-neutral-600 space-y-1">
-                    <span className="font-bold text-neutral-800 block">Credenciales de prueba listas:</span>
-                    <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-neutral-200">
-                      <div>
-                        <span className="text-neutral-500">Usuario:</span> <strong className="text-neutral-900">carlos.mendoza</strong><br />
-                        <span className="text-neutral-500">Clave:</span> <strong className="text-neutral-900">Talento2026!</strong>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoginIdentifier('carlos.mendoza');
-                          setLoginPassword('Talento2026!');
-                        }}
-                        className="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded text-[10px] font-sans font-semibold"
-                      >
-                        Rellenar
-                      </button>
-                    </div>
-                  </div>
-
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -321,11 +304,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   </button>
                 </form>
               ) : (
-                /* TAB 2: REGISTER WITH EMAIL & CREDENTIAL GENERATOR */
+                /* TAB 2: REGISTER */
                 <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">
-                      Nombre Completo
+                      Nombres Completos
                     </label>
                     <input
                       type="text"
@@ -333,79 +316,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                       placeholder="Ej. María Elena Torres Sánchez"
                       value={regFullName}
                       onChange={e => setRegFullName(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-neutral-900 font-medium"
                     />
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-neutral-700">Nombre de Usuario</label>
-                      <button
-                        type="button"
-                        onClick={handleSuggestUsername}
-                        className="text-[11px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        Sugerir usuario
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="maria.torres.2026"
-                        value={regUsername}
-                        onChange={e => setRegUsername(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email Field with Automated Notification Indicator */}
+                  {/* Correo Electrónico */}
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">
-                      Correo Electrónico (Recibirá el mensaje automatizado)
+                      Correo Electrónico
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
                         required
-                        placeholder="maria.torres@gmail.com"
+                        placeholder="ejemplo@correo.com"
                         value={regEmail}
                         onChange={e => setRegEmail(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-neutral-900 font-medium"
                       />
                     </div>
-                    <span className="text-[11px] text-neutral-500 mt-1 block">
-                      Te enviaremos un correo con tu código de verificación y tus credenciales de acceso.
-                    </span>
                   </div>
 
+                  {/* Contraseña */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-neutral-700">
-                        Contraseña
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleGeneratePassword}
-                        className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
-                      >
-                        <Sparkles className="w-3 h-3 text-emerald-600" />
-                        Generar clave segura
-                      </button>
-                    </div>
+                    <label className="block font-semibold text-neutral-700 mb-1">
+                      Contraseña
+                    </label>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
-                        placeholder="Crea o genera tu contraseña..."
+                        placeholder="Crea tu contraseña..."
                         value={regPassword}
                         onChange={e => setRegPassword(e.target.value)}
-                        className="w-full pl-9 pr-10 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono"
+                        className="w-full pl-9 pr-10 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono text-neutral-900"
                       />
                       <button
                         type="button"
@@ -415,48 +361,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-
-                    {regPassword && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                        <span className="text-neutral-500">Fortaleza:</span>
-                        <span className={`font-semibold ${regPassword.length >= 8 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {regPassword.length >= 8 ? '🟢 Segura y Robusta' : '🟡 Aumenta a más de 8 caracteres'}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
                   >
-                    <span>{isLoading ? 'Enviando correo...' : 'Crear Cuenta y Enviar Correo Automatizado'}</span>
-                    <Send className="w-4 h-4" />
+                    <span>{isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
               )}
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-neutral-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-neutral-400 font-medium">o acceso en 1 segundo</span>
-                </div>
-              </div>
-
-              {/* Quick 1-Click Generator for Instant Entry */}
-              <button
-                type="button"
-                onClick={handleQuickAccessGeneration}
-                disabled={isLoading}
-                className="w-full py-2.5 border-2 border-dashed border-neutral-300 hover:border-slate-800 bg-neutral-50/70 hover:bg-neutral-50 rounded-2xl text-xs font-semibold text-neutral-800 flex items-center justify-center gap-2 transition-all group"
-              >
-                <Sparkles className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                <span>⚡ Generar Usuario & Contraseña Instantáneos</span>
-              </button>
             </>
           ) : (
             /* STEP 2: VERIFICATION CODE FROM EMAIL INBOX */

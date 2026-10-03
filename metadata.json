@@ -1,0 +1,6 @@
+{
+  "name": "TalentoMaestro - Gestión de Perfil Profesional y CVs Adaptables",
+  "description": "Plataforma de gestión de perfil profesional maestro: registra tu trayectoria una vez y genera, adapta y gestiona CVs ATS de alto impacto para cada oportunidad laboral.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

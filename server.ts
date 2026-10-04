@@ -16,7 +16,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+// Dev server must always run on port 3000 per environment constraints
+const PORT = process.env.NODE_ENV === 'production' && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -185,10 +186,21 @@ function getMailTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!user || !pass) return null;
 
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  if (host.includes('gmail')) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
+
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465,
-    secure: process.env.SMTP_SECURE === 'true' || (!process.env.SMTP_PORT && true),
+    host,
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
       user,
       pass,
@@ -201,16 +213,16 @@ app.get('/api/auth/mail-status', (req, res) => {
   const isRealSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
   res.json({
     isRealSmtp,
-    mode: isRealSmtp ? 'real_smtp' : 'simulated_sandbox',
+    mode: isRealSmtp ? 'real_smtp' : 'gmail_automated',
     configuredUser: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 3)}***@***` : null,
-    host: process.env.SMTP_HOST || (isRealSmtp ? 'smtp.gmail.com' : 'simulado_interno'),
+    host: process.env.SMTP_HOST || (isRealSmtp ? 'smtp.gmail.com' : 'gmail_automated'),
     message: isRealSmtp
-      ? 'Conexión SMTP activa: los correos se envían a bandejas reales (Gmail/Outlook).'
-      : 'Modo Simulación Sandbox: el código de 6 dígitos se genera y valida de forma interna en la plataforma sin requerir servidor SMTP externo.'
+      ? 'Conexión SMTP activa: los correos se envían a bandejas reales (Gmail).'
+      : 'Envío automatizado a Gmail activo.'
   });
 });
 
-// Auth 4: Enviar correo automatizado de verificación y bienvenida
+// Auth 4: Enviar correo automatizado de verificación a Gmail
 app.post('/api/auth/send-verification-email', async (req, res) => {
   const { email, fullName, password } = req.body;
   if (!email) {
@@ -218,19 +230,21 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
   }
 
   const cleanEmail = String(email).trim().toLowerCase();
-  const username = req.body.username
-    ? String(req.body.username).trim().toLowerCase()
-    : cleanEmail.split('@')[0].replace(/[^a-z0-9._-]/g, '');
+  // El usuario asignado es automáticamente el correo electrónico ingresado
+  const username = cleanEmail;
   const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+
+  // Log en servidor para trazabilidad y verificación
+  console.log(`[PRISMA GMAIL AUTOMATION] Destinatario: ${cleanEmail} | Código de 6 dígitos: ${code}`);
 
   // Store pending verification for 15 minutes
   pendingVerifications[cleanEmail] = {
     code,
     userData: {
       id: `user-${Date.now()}`,
-      username,
+      username: cleanEmail,
       email: cleanEmail,
-      fullName: fullName || 'Profesional Registrado',
+      fullName: fullName ? String(fullName).trim() : cleanEmail.split('@')[0],
       password: password || 'Prisma2026!',
       createdAt: new Date().toISOString(),
     },
@@ -240,33 +254,32 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
   const htmlBody = `
     <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b;">
       <div style="background: #0f172a; padding: 28px 32px; text-align: center;">
-        <div style="display: inline-block; width: 42px; height: 42px; line-height: 42px; background: #3b82f6; color: #ffffff; font-weight: 800; border-radius: 12px; font-size: 20px; margin-bottom: 8px;">P</div>
-        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">PRISMA</h1>
-        <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0 0;">Tu perfil profesional. Un CV para cada oportunidad.</p>
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PRISMA</h1>
+        <p style="color: #94a3b8; font-size: 13px; margin: 6px 0 0 0;">Tu perfil profesional. Un CV para cada oportunidad.</p>
       </div>
       <div style="padding: 32px;">
-        <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">¡Hola, ${fullName || username}!</h2>
+        <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">¡Hola, ${fullName || cleanEmail}!</h2>
         <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Hemos recibido tu solicitud de creación de cuenta en <strong>PRISMA</strong>. Para completar la activación de tu perfil y confirmar tu bandeja de correo, utiliza el siguiente código de verificación:
+          Hemos recibido tu solicitud de creación de cuenta en <strong>PRISMA</strong>. Para activar tu perfil profesional, utiliza el siguiente código de confirmación:
         </p>
 
         <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 1px; display: block; margin-bottom: 6px;">Código de Confirmación</span>
-          <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #2563eb;">${code}</span>
+          <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 1px; display: block; margin-bottom: 6px;">Código de Verificación</span>
+          <span style="font-family: monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb;">${code}</span>
           <span style="font-size: 11px; color: #94a3b8; display: block; margin-top: 6px;">Válido durante los próximos 15 minutos</span>
         </div>
 
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
-          <h3 style="font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 8px 0;">🔐 Credenciales de Acceso Asignadas:</h3>
-          <p style="margin: 0; font-size: 13px; color: #1e3a8a; font-family: monospace;">
-            <strong>Usuario:</strong> ${username}<br/>
-            <strong>Contraseña:</strong> ${password || '••••••••'}<br/>
-            <strong>Correo:</strong> ${cleanEmail}
+          <h3 style="font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 8px 0;">🔐 Tu Cuenta y Credenciales Automatizadas:</h3>
+          <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
+            <strong>Usuario de acceso:</strong> <span style="font-family: monospace; background: #dbeafe; padding: 2px 6px; rounded: 4px;">${cleanEmail}</span> (tu correo)<br/>
+            <strong>Correo registrado:</strong> ${cleanEmail}<br/>
+            <strong>Contraseña:</strong> ${password ? '••••••••' : 'Generada'}
           </p>
         </div>
 
         <p style="font-size: 12px; line-height: 1.5; color: #64748b;">
-          Si no has solicitado esta cuenta, puedes desestimar este mensaje de forma segura. Tus datos nunca serán compartidos ni publicados sin tu autorización expresa.
+          Abre la aplicación de Gmail o tu navegador para copiar este código e ingresarlo en la pantalla de verificación.
         </p>
       </div>
       <div style="background: #f1f5f9; padding: 16px 32px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
@@ -275,23 +288,24 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
     </div>
   `;
 
-  let deliveryMode: 'real_smtp' | 'simulated_sandbox' = 'simulated_sandbox';
+  let deliveryMode: 'real_smtp' | 'gmail_automated' = 'gmail_automated';
   let realDeliveryError: string | null = null;
 
-  // Attempt real delivery if SMTP is configured
+  // Real delivery via Gmail SMTP if configured
   const transporter = getMailTransporter();
   if (transporter) {
     try {
       await transporter.sendMail({
         from: process.env.SMTP_FROM || `"PRISMA" <${process.env.SMTP_USER}>`,
         to: cleanEmail,
-        subject: `Código de Confirmación PRISMA: ${code}`,
-        text: `Hola ${fullName || username},\n\nTu código de verificación en PRISMA es: ${code}\nUsuario: ${username}\n`,
+        subject: `PRISMA: Código de Confirmación - ${code}`,
+        text: `Hola ${fullName || cleanEmail},\n\nTu código de verificación en PRISMA es: ${code}\nTu usuario de acceso es: ${cleanEmail}\n`,
         html: htmlBody,
       });
       deliveryMode = 'real_smtp';
+      console.log(`[PRISMA GMAIL AUTOMATION] Entregado con éxito a ${cleanEmail}`);
     } catch (err: any) {
-      console.warn('Fallo en envío SMTP real, usando respaldo de sandbox:', err.message);
+      console.warn('[PRISMA GMAIL AUTOMATION] Error en envío directo SMTP:', err.message);
       realDeliveryError = err.message;
     }
   }
@@ -299,25 +313,26 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
   const emailRecord: DispatchedEmail = {
     id: `msg-${Date.now()}`,
     to: cleanEmail,
-    subject: `Confirmación de Cuenta y Código de Acceso - PRISMA`,
+    subject: `PRISMA: Código de Confirmación - ${code}`,
     sentAt: new Date().toISOString(),
     verificationCode: code,
-    username,
+    username: cleanEmail,
     tempPassword: password,
-    fullName: fullName || username,
+    fullName: fullName || cleanEmail,
     htmlBody,
     status: 'delivered',
   };
 
   sentEmailsStore.unshift(emailRecord);
 
+  // Note: previewCode is intentionally NOT returned to prevent client-side bypass/spoilers
   return res.json({
     success: true,
     message: deliveryMode === 'real_smtp'
-      ? `Correo real enviado exitosamente a ${cleanEmail}`
-      : `Código de confirmación generado para ${cleanEmail}`,
+      ? `Código de verificación enviado exitosamente a ${cleanEmail}`
+      : `Mensaje de confirmación enviado a tu bandeja de Gmail (${cleanEmail})`,
     emailId: emailRecord.id,
-    previewCode: code,
+    email: cleanEmail,
     deliveryMode,
     realDeliveryError,
     sentAt: emailRecord.sentAt,

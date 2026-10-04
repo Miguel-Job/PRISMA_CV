@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount } from '../../types';
-import { loginUser, registerUser, generateCredentialsApi, sendVerificationEmail, verifyEmailCode, fetchInboxMessages } from '../../services/api';
-import { Lock, User, Mail, Sparkles, Key, Check, Eye, EyeOff, ArrowRight, ShieldCheck, Copy, RefreshCw, AlertCircle, Inbox, Send, ExternalLink, ArrowLeft } from 'lucide-react';
+import { loginUser, sendVerificationEmail, verifyEmailCode } from '../../services/api';
+import { Lock, Mail, Check, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, ExternalLink, ArrowLeft } from 'lucide-react';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: UserAccount, credentials?: { username: string; password: string }) => void;
@@ -25,9 +25,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
-  const [previewCode, setPreviewCode] = useState<string | null>(null);
-  const [showInboxModal, setShowInboxModal] = useState(false);
-  const [inboxEmails, setInboxEmails] = useState<any[]>([]);
 
   // Generated feedback
   const [isLoading, setIsLoading] = useState(false);
@@ -47,48 +44,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setRegPassword(newPass);
   };
 
-  // Suggest username helper based on name
-  const handleSuggestUsername = () => {
-    const base = regFullName
-      ? regFullName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '.')
-      : 'usuario.pro';
-    const rand = Math.floor(100 + Math.random() * 900);
-    const suggested = `${base.slice(0, 14)}.${rand}`;
-    setRegUsername(suggested);
-    if (!regEmail && regFullName) {
-      setRegEmail(`${suggested}@gmail.com`);
-    }
-  };
-
-  // 1-Click Instant User & Password Generation
-  const handleQuickAccessGeneration = async () => {
-    setIsLoading(true);
-    setErrorMsg('');
-    try {
-      const res = await generateCredentialsApi('Profesional Invitado');
-      if (res.success && res.user && res.generatedPassword) {
-        // Also dispatch welcome email
-        await sendVerificationEmail(
-          res.generatedEmail || res.user.email,
-          res.generatedUsername || res.user.username,
-          res.user.fullName,
-          res.generatedPassword
-        );
-
-        onLoginSuccess(res.user, {
-          username: res.generatedUsername || res.user.username,
-          password: res.generatedPassword,
-        });
-      } else {
-        setErrorMsg('No se pudo generar el acceso automático.');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al generar credenciales.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -98,7 +53,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       if (res.success && res.user) {
         onLoginSuccess(res.user);
       } else {
-        setErrorMsg(res.error || 'Usuario o contraseña incorrectos.');
+        setErrorMsg(res.error || 'Usuario / Correo o contraseña incorrectos.');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error de conexión.');
@@ -108,6 +63,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   };
 
   // Register initiation -> Dispatches Automated Verification Email
+  // El usuario asignado es de forma automatizada el correo electrónico ingresado
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regFullName.trim() || !regEmail.trim() || !regPassword) {
@@ -118,22 +74,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setErrorMsg('');
 
-    // Automatically derive clean username from email
-    const derivedUsername = regEmail.split('@')[0].trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'usuario';
-    setRegUsername(derivedUsername);
+    const cleanEmail = regEmail.trim().toLowerCase();
+    setRegUsername(cleanEmail);
 
     try {
-      // Dispatch verification email to user's inbox
-      const res = await sendVerificationEmail(regEmail, derivedUsername, regFullName.trim(), regPassword);
+      // Dispatch verification email to user's Gmail
+      const res = await sendVerificationEmail(cleanEmail, cleanEmail, regFullName.trim(), regPassword);
       if (res.success) {
-        setPendingEmail(regEmail);
-        setPreviewCode(res.previewCode || null);
+        setPendingEmail(cleanEmail);
         setVerificationStep(true);
-        setSuccessNotice(`Se ha enviado un código de verificación a ${regEmail}.`);
-
-        // Fetch messages for the live inbox view
-        const msgs = await fetchInboxMessages(regEmail);
-        setInboxEmails(msgs);
+        setSuccessNotice(`Hemos enviado el código de verificación a tu bandeja de Gmail (${cleanEmail}).`);
       } else {
         setErrorMsg(res.error || 'Error al enviar el correo de confirmación.');
       }
@@ -144,11 +94,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Submit 6-digit code received by email
+  // Submit 6-digit code received in Gmail
   const handleVerifyCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verificationCode || verificationCode.length < 6) {
-      setErrorMsg('Ingresa el código completo de 6 dígitos que llegó a tu correo.');
+      setErrorMsg('Ingresa el código completo de 6 dígitos que llegó a tu app de Gmail.');
       return;
     }
 
@@ -156,14 +106,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setErrorMsg('');
 
     try {
-      const res = await verifyEmailCode(pendingEmail, verificationCode);
+      const res = await verifyEmailCode(pendingEmail, verificationCode.trim());
       if (res.success && res.user) {
         onLoginSuccess(res.user, {
-          username: regUsername,
+          username: pendingEmail,
           password: regPassword,
         });
       } else {
-        setErrorMsg(res.error || 'Código incorrecto o expirado.');
+        setErrorMsg(res.error || 'Código incorrecto. Revisa el mensaje recibido en tu app de Gmail.');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al verificar el código.');
@@ -176,24 +126,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const res = await sendVerificationEmail(pendingEmail, regUsername, regFullName, regPassword);
+      const res = await sendVerificationEmail(pendingEmail, pendingEmail, regFullName, regPassword);
       if (res.success) {
-        setPreviewCode(res.previewCode || null);
-        setSuccessNotice('Nuevo código de verificación enviado a tu bandeja.');
-        const msgs = await fetchInboxMessages(pendingEmail);
-        setInboxEmails(msgs);
+        setSuccessNotice(`Nuevo código reenviado a ${pendingEmail}. Revisa tu Gmail.`);
+      } else {
+        setErrorMsg(res.error || 'No se pudo reenviar el código.');
       }
-    } catch (err) {
-      setErrorMsg('No se pudo reenviar el mensaje.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al reenviar el correo.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const openInboxViewer = async () => {
-    const msgs = await fetchInboxMessages(pendingEmail);
-    setInboxEmails(msgs);
-    setShowInboxModal(true);
   };
 
   return (
@@ -201,8 +144,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md space-y-6">
         {/* Brand Lockup */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 text-white shadow-md text-xl font-black mb-1">
-            P
+          <div className="flex justify-center mb-1">
+            <img
+              src="/prisma-logo.png"
+              alt="Logotipo PRISMA"
+              className="w-24 h-24 object-contain drop-shadow-sm hover:scale-105 transition-transform"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900">
             PRISMA
@@ -216,7 +163,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         <div className="bg-white border border-neutral-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
           {!verificationStep ? (
             <>
-              {/* Tabs: Iniciar Sesión / Crear Cuenta con Generador */}
+              {/* Tabs: Iniciar Sesión / Crear Cuenta */}
               <div className="grid grid-cols-2 p-1 bg-neutral-100 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
@@ -254,16 +201,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">
-                      Usuario
+                      Usuario o Correo Electrónico
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Mail className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
                         value={loginIdentifier}
                         onChange={e => setLoginIdentifier(e.target.value)}
-                        placeholder="carlos.mendoza"
+                        placeholder="ejemplo@gmail.com o usuario"
                         className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-neutral-900 font-medium"
                       />
                     </div>
@@ -313,36 +260,47 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     <input
                       type="text"
                       required
-                      placeholder="Ej. María Elena Torres Sánchez"
+                      placeholder="Ej. Juan Carlos Pérez"
                       value={regFullName}
                       onChange={e => setRegFullName(e.target.value)}
                       className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-neutral-900 font-medium"
                     />
                   </div>
 
-                  {/* Correo Electrónico */}
+                  {/* Correo Electrónico (Tu Usuario) */}
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">
-                      Correo Electrónico
+                      Correo Electrónico (Tu Usuario de Acceso)
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
                         required
-                        placeholder="ejemplo@correo.com"
+                        placeholder="tu-correo@gmail.com"
                         value={regEmail}
                         onChange={e => setRegEmail(e.target.value)}
                         className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-neutral-900 font-medium"
                       />
                     </div>
+                    <p className="text-[11px] text-neutral-500 mt-1 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Tu correo será automáticamente tu usuario oficial para ingresar al sistema.</span>
+                    </p>
                   </div>
 
                   {/* Contraseña */}
                   <div>
-                    <label className="block font-semibold text-neutral-700 mb-1">
-                      Contraseña
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-neutral-700">Contraseña</label>
+                      <button
+                        type="button"
+                        onClick={handleGeneratePassword}
+                        className="text-[11px] text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Generar segura
+                      </button>
+                    </div>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
@@ -368,25 +326,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     disabled={isLoading}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
                   >
-                    <span>{isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}</span>
+                    <span>{isLoading ? 'Enviando código a Gmail...' : 'Crear Cuenta y Recibir Código en Gmail'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
               )}
             </>
           ) : (
-            /* STEP 2: VERIFICATION CODE FROM EMAIL INBOX */
+            /* STEP 2: VERIFICATION CODE FROM GMAIL INBOX */
             <div className="space-y-5 text-xs">
               <div className="text-center space-y-2">
-                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
-                  <Mail className="w-6 h-6 animate-bounce" />
+                <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs border border-red-100">
+                  <Mail className="w-7 h-7" />
                 </div>
                 <h3 className="text-base font-bold text-neutral-900">
-                  Revisa tu Bandeja de Correo
+                  Revisa tu Bandeja de Gmail
                 </h3>
                 <p className="text-neutral-600 leading-relaxed text-xs">
-                  Hemos enviado un mensaje automatizado a:
-                  <strong className="block text-neutral-900 font-mono text-[13px] mt-0.5">{pendingEmail}</strong>
+                  Hemos enviado un mensaje automatizado con tu código a:
+                  <strong className="block text-neutral-900 font-mono text-sm mt-0.5">{pendingEmail}</strong>
                 </p>
               </div>
 
@@ -404,31 +362,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               )}
 
-              {/* Live Inbox Simulator Button */}
-              <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2 text-center">
-                <span className="text-[11px] font-semibold text-blue-900 block">
-                  ¿Quieres inspeccionar el mensaje recibido ahora mismo?
-                </span>
-                <button
-                  type="button"
-                  onClick={openInboxViewer}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5 text-xs"
+              {/* Direct Gmail App Action Box */}
+              <div className="p-4 bg-gradient-to-br from-red-50/70 via-white to-amber-50/50 border border-red-200/80 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-red-950 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    Acción en tu app de Gmail
+                  </span>
+                  <span className="text-[10px] text-neutral-500 font-mono">Bandeja de Entrada</span>
+                </div>
+
+                <p className="text-[11px] text-neutral-600 leading-relaxed">
+                  Abre tu aplicación de Gmail o tu navegador para copiar el código de 6 dígitos enviado por <strong>PRISMA</strong>.
+                </p>
+
+                <a
+                  href={`https://mail.google.com/mail/u/?authuser=${encodeURIComponent(pendingEmail)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 px-3 bg-white hover:bg-neutral-50 text-red-600 border border-red-200 font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 text-xs group"
                 >
-                  <Inbox className="w-4 h-4" />
-                  <span>Abrir Bandeja de Entrada en Vivo</span>
-                </button>
-                {previewCode && (
-                  <p className="text-[11px] text-blue-700 font-mono mt-1">
-                    Código de verificación detectado: <strong>{previewCode}</strong>
-                  </p>
-                )}
+                  <svg className="w-4 h-4 fill-current text-red-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                  </svg>
+                  <span>Abrir la app de Gmail ({pendingEmail})</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-neutral-400 group-hover:text-red-500" />
+                </a>
               </div>
 
               {/* Form to enter 6-digit PIN */}
               <form onSubmit={handleVerifyCodeSubmit} className="space-y-4">
                 <div>
                   <label className="block font-semibold text-neutral-700 mb-1 text-center">
-                    Ingresa el Código de 6 Dígitos
+                    Ingresa el Código de 6 Dígitos recibido
                   </label>
                   <input
                     type="text"
@@ -438,25 +404,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     placeholder="123456"
                     value={verificationCode}
                     onChange={e => setVerificationCode(e.target.value.replace(/[^0-9]/g, ''))}
-                    className="w-full text-center py-3 text-2xl font-bold font-mono tracking-widest bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 text-neutral-900"
+                    className="w-full text-center py-3.5 text-2xl font-bold font-mono tracking-widest bg-neutral-50 border border-neutral-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-600 text-neutral-900"
                   />
-                  {previewCode && (
-                    <button
-                      type="button"
-                      onClick={() => setVerificationCode(previewCode)}
-                      className="text-[11px] text-blue-600 hover:text-blue-800 underline font-medium block mx-auto mt-1"
-                    >
-                      Autocompletar código recibido ({previewCode})
-                    </button>
-                  )}
+                  <p className="text-[11px] text-neutral-500 text-center mt-1.5">
+                    Tu usuario de acceso oficial es <strong className="font-mono text-neutral-800">{pendingEmail}</strong>
+                  </p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                  disabled={isLoading || verificationCode.length < 6}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                 >
-                  <span>{isLoading ? 'Verificando...' : 'Confirmar Cuenta y Acceder'}</span>
+                  <span>{isLoading ? 'Verificando con Gmail...' : 'Confirmar Cuenta y Acceder'}</span>
                   <Check className="w-4 h-4" />
                 </button>
               </form>
@@ -465,11 +425,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               <div className="flex items-center justify-between pt-2 border-t border-neutral-100 text-xs">
                 <button
                   type="button"
-                  onClick={() => setVerificationStep(false)}
+                  onClick={() => {
+                    setVerificationStep(false);
+                    setErrorMsg('');
+                  }}
                   className="text-neutral-500 hover:text-neutral-900 flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  Corregir datos
+                  Cambiar correo
                 </button>
                 <button
                   type="button"
@@ -477,7 +440,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   disabled={isLoading}
                   className="text-blue-600 hover:text-blue-800 font-semibold"
                 >
-                  Reenviar correo
+                  Reenviar código a Gmail
                 </button>
               </div>
             </div>
@@ -490,91 +453,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           <span>Tus datos y credenciales permanecen bajo tu soberanía</span>
         </div>
       </div>
-
-      {/* Simulated Live Inbox Modal to view automated email */}
-      {showInboxModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-neutral-200 flex flex-col max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
-                  <Inbox className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-neutral-900">
-                    Bandeja de Correo Recibido en Vivo
-                  </h3>
-                  <p className="text-xs text-neutral-500 font-mono">
-                    Destinatario: {pendingEmail}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInboxModal(false)}
-                className="text-neutral-400 hover:text-neutral-700 text-sm font-bold p-1 rounded"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Email message body */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              {inboxEmails.length > 0 ? (
-                inboxEmails.map(mail => (
-                  <div key={mail.id} className="border border-neutral-200 rounded-2xl overflow-hidden shadow-xs">
-                    <div className="bg-neutral-50 p-3.5 border-b border-neutral-200 text-xs flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-neutral-800 block text-sm">{mail.subject}</span>
-                        <span className="text-neutral-500 font-mono text-[11px]">De: notificaciones@prisma.app</span>
-                      </div>
-                      <span className="text-[11px] font-mono text-neutral-400">
-                        {new Date(mail.sentAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    {/* Render exact HTML body */}
-                    <div
-                      className="p-4 bg-white"
-                      dangerouslySetInnerHTML={{ __html: mail.htmlBody }}
-                    />
-                    <div className="p-3 bg-neutral-50 border-t border-neutral-200 flex justify-between items-center text-xs">
-                      <span className="text-neutral-600 font-mono text-[11px]">
-                        Código: <strong>{mail.verificationCode}</strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVerificationCode(mail.verificationCode);
-                          setShowInboxModal(false);
-                        }}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold"
-                      >
-                        Usar este código en el formulario
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-neutral-500 text-xs">
-                  Esperando entrega del correo automatizado...
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-3 bg-neutral-50 border-t border-neutral-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowInboxModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-neutral-700 hover:text-neutral-900"
-              >
-                Cerrar Bandeja
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -127,13 +127,10 @@ export async function sendVerificationEmail(
     if (!res.ok) throw new Error(data.error || 'Error enviando correo');
     return data;
   } catch (err: any) {
-    console.warn('Network issue on sendVerificationEmail, simulated fallback code:', err);
-    const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.error('Error on sendVerificationEmail:', err);
     return {
-      success: true,
-      message: `Mensaje automatizado enviado a ${email}`,
-      previewCode: mockCode,
-      emailId: `local-msg-${Date.now()}`,
+      success: false,
+      error: err.message || 'Error de conexión con el servicio de correo.',
     };
   }
 }

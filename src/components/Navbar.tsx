@@ -45,12 +45,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onTabChange('home')}
-            className="text-lg font-extrabold tracking-tight text-neutral-900 flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0"
+            className="text-lg font-extrabold tracking-tight text-neutral-900 flex items-center gap-2.5 hover:opacity-90 transition-opacity shrink-0"
           >
-            <span className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-xs">
-              P
-            </span>
-            <span className="tracking-tight">PRISMA</span>
+            <img
+              src="/prisma-logo.png"
+              alt="PRISMA"
+              className="w-8 h-8 object-contain"
+            />
+            <span className="tracking-tight font-black">PRISMA</span>
           </button>
 
           {/* Zone 2: Navigation Links */}

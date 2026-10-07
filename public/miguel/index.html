@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102b2a" />
+    <meta name="description" content="Portafolio profesional de Miguel Ángel Torres Delgado: ingeniería agrícola, recursos hídricos, calidad de agua y análisis geoespacial." />
+    <meta property="og:title" content="Miguel Torres | Ingeniería agrícola y recursos hídricos" />
+    <meta property="og:description" content="Experiencia de campo, gestión hídrica y análisis geoespacial." />
+    <meta property="og:type" content="website" />
+    <title>Miguel Torres | Ingeniería agrícola y recursos hídricos</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <header class="site-header">
+      <a href="#inicio" class="brand" aria-label="Inicio, Miguel Torres"><span class="brand-mark">MT</span><span>Miguel Torres<span class="brand-dot">.</span></span></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menú">☰</button>
+      <nav id="main-nav" class="nav-links" aria-label="Navegación principal">
+        <a href="#trayectoria">Trayectoria</a><a href="#capacidades">Capacidades</a><a href="#postulacion">Preparar postulación</a>
+        <a class="nav-contact" href="mailto:miguelworks391@gmail.com">Contactar <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="contenido">
+      <section class="hero section-wrap" id="inicio">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="live-dot"></span> CHICLAYO, PERÚ <span class="eyebrow-sep">/</span> DISPONIBLE PARA NUEVOS RETOS</p>
+          <h1>Agua, territorio<br />y <em>soluciones técnicas.</em></h1>
+          <p id="hero-summary" class="hero-summary"></p>
+          <div class="hero-actions"><a class="button button-dark" href="#trayectoria">Explorar trayectoria <span aria-hidden="true">↓</span></a><button class="button button-light" id="download-cv">Descargar CV <span aria-hidden="true">↗</span></button></div>
+          <div class="hero-meta"><span><i class="meta-icon">⌖</i> Lambayeque, Perú</span><span><i class="meta-icon">◷</i> Campo + análisis técnico</span></div>
+        </div>
+        <div class="hero-art" aria-label="Ilustración abstracta de un cauce y curvas de nivel" role="img">
+          <div class="art-grid"></div><svg class="contours" viewBox="0 0 520 580" fill="none" aria-hidden="true"><path d="M-50 80c80-84 188-93 253-36 65 58 50 151 121 187 70 37 147 5 214-48M-67 128c88-76 175-65 221-15 52 56 37 149 117 202 81 54 172 30 243-25M-72 181c74-50 139-33 178 23 40 57 37 148 107 213 88 82 186 69 299 12M-60 238c71-34 111 1 139 56 36 70 36 141 100 211 75 82 173 111 303 75M-52 298c59-8 82 36 96 90 20 77 34 142 90 211 68 83 179 147 310 134M-38 356c50 14 58 68 66 117 13 81 28 155 82 221 67 82 187 174 304 173M-12 415c38 33 39 88 42 135 5 71 17 133 64 191 56 69 156 147 253 185M14 470c27 41 27 89 25 132-3 66 10 123 51 174 43 54 118 112 194 153" stroke="currentColor" stroke-width="1.2"/><path d="M170-29c-26 57-16 103 33 140 48 37 112 47 136 103 29 68-9 153 38 205 47 53 105 46 172 25M157-4c-17 53-1 90 44 122 56 40 120 57 140 113 25 70-11 151 37 216 47 65 119 63 185 46M144 29c-4 43 10 71 55 102 55 38 124 69 143 124 25 75-6 146 37 216 42 69 122 91 183 78M130 61c7 32 23 50 67 80 58 40 123 73 144 129 23 63-2 141 36 216 38 75 123 119 183 110" stroke="currentColor" stroke-width=".75" opacity=".55"/></svg>
+          <div class="art-tag"><span class="tag-index">01</span><span>HIDROLOGÍA<br />Y TERRITORIO</span></div><div class="art-coord">06°46' S<br />79°50' O</div><div class="watermark">TERRITORIO<br /><span>EN MOVIMIENTO</span></div>
+        </div>
+        <div class="hero-bottom"><span>INGENIERÍA AGRÍCOLA · GESTIÓN DEL AGUA</span><a href="#trayectoria">Desplazar para explorar <span aria-hidden="true">↓</span></a></div>
+      </section>
+
+      <section class="focus-strip" aria-label="Enfoques profesionales"><div class="section-wrap focus-inner"><span>UN PERFIL<br />TRES ENFOQUES</span><div class="focus-options" role="group" aria-label="Elige el enfoque del perfil"><button class="focus-option is-active" data-profile="agua" aria-pressed="true"><b>01</b> Recursos hídricos</button><button class="focus-option" data-profile="ambiental" aria-pressed="false"><b>02</b> Gestión ambiental</button><button class="focus-option" data-profile="agricola" aria-pressed="false"><b>03</b> Ingeniería agrícola</button></div></div></section>
+
+      <section class="intro section-wrap section-pad" id="trayectoria">
+        <div class="section-label"><span>01 / PERFIL</span><span class="line"></span><span id="profile-label">RECURSOS HÍDRICOS</span></div>
+        <div class="intro-grid"><h2 id="profile-title">Conectar el conocimiento técnico con el territorio.</h2><div><p id="profile-description" class="intro-text"></p><div class="proof-row"><div><strong>3+</strong><span>AÑOS DE EXPERIENCIA<br />EN CAMPO Y SOPORTE TÉCNICO</span></div><div><strong>4</strong><span>EXPERIENCIAS<br />PROFESIONALES Y FORMATIVAS</span></div></div></div></div>
+      </section>
+
+      <section class="experience-section">
+        <div class="section-wrap section-pad">
+          <div class="section-label"><span>02 / EXPERIENCIA</span><span class="line"></span><span>APRENDER HACIENDO</span></div>
+          <div class="section-heading"><h2>Trabajo en campo.<br /><em>Información que orienta.</em></h2><p>Experiencia en operación hídrica, infraestructura, monitoreo y soporte a investigación agrícola.</p></div>
+          <div id="experience-list" class="experience-list"></div>
+        </div>
+      </section>
+
+      <section class="skills-section section-wrap section-pad" id="capacidades">
+        <div class="section-label"><span>03 / HERRAMIENTAS</span><span class="line"></span><span>TÉCNICA + CRITERIO</span></div>
+        <div class="skills-grid"><div><h2>De los datos<br />a las <em>decisiones.</em></h2><p>Herramientas aplicadas al análisis espacial, la hidráulica y la infraestructura de riego.</p><div class="skill-tags" id="skill-tags"></div></div><div class="training-panel"><div class="training-head"><span>FORMACIÓN RECIENTE</span><span>2025 — 2026</span></div><div id="training-list"></div><a href="#capacidades" class="text-link" id="show-training">Ver formación relevante <span>↗</span></a></div></div>
+      </section>
+
+      <section class="match-section" id="postulacion"><div class="section-wrap section-pad"><div class="section-label label-light"><span>04 / HERRAMIENTA</span><span class="line"></span><span>PREPARA TU SIGUIENTE PASO</span></div><div class="match-heading"><div><p class="eyebrow eyebrow-light">ANÁLISIS LOCAL · SIN SUBIR TUS DATOS</p><h2>¿Qué pide la<br /><em>convocatoria?</em></h2><p>Compara sus requisitos con la información profesional de este perfil. El resultado es una guía para preparar la postulación, no un puntaje oficial.</p></div><div class="match-number">04<span>ENFOQUES DE<br />EVIDENCIA</span></div></div>
+        <div class="match-tool"><div class="match-input"><label for="vacancy-text">Pega aquí las funciones y requisitos</label><textarea id="vacancy-text" rows="9" placeholder="Ej.: experiencia en monitoreo de calidad de agua, manejo de QGIS, elaboración de informes técnicos..."></textarea><div class="input-footer"><span>Se procesa en este navegador. No se envía a ningún servidor.</span><button id="analyze-vacancy" class="button button-mint">Analizar requisitos <span>↗</span></button></div></div><div class="match-result" id="match-result" aria-live="polite"><div class="result-empty"><span class="result-icon">⌕</span><h3>Tu análisis aparecerá aquí</h3><p>Identificaremos términos presentes y aspectos que conviene confirmar en tus documentos.</p></div></div></div>
+        <div class="application-save"><div><strong>Guarda el seguimiento</strong><p>La vacante y tus notas se guardan solo en este navegador.</p></div><div class="save-controls"><input id="application-name" type="text" aria-label="Nombre de la vacante" placeholder="Nombre del puesto" /><button id="save-application" class="button button-outline">Guardar vacante</button></div></div><div class="saved-applications" id="saved-applications"></div>
+      </div></section>
+
+      <section class="education-section section-wrap section-pad"><div class="section-label"><span>05 / FORMACIÓN</span><span class="line"></span><span>BASE PROFESIONAL</span></div><div class="education-card"><div class="edu-year">2018—2024</div><div><span class="edu-type">FORMACIÓN UNIVERSITARIA</span><h3>Bachiller en Ingeniería Agrícola</h3><p>Universidad Nacional Pedro Ruiz Gallo</p></div><div class="edu-stamp">UNPRG<br /><span>LAMBAYEQUE</span></div></div></section>
+
+      <section class="contact-section"><div class="section-wrap contact-inner"><div><p class="eyebrow eyebrow-light">¿CONVERSAMOS?</p><h2>Una buena solución<br />empieza <em>escuchando.</em></h2></div><a class="contact-circle" href="mailto:miguelworks391@gmail.com" aria-label="Escribir correo electrónico">ESCRÍBEME <span>↗</span></a></div></section>
+    </main>
+
+    <footer class="site-footer"><div class="section-wrap footer-inner"><a href="#inicio" class="brand footer-brand"><span class="brand-mark">MT</span><span>Miguel Torres<span class="brand-dot">.</span></span></a><span>Ingeniería agrícola · Recursos hídricos · Lambayeque, Perú</span><span>© <span id="year"></span> Miguel Torres</span></div><p class="footer-note">Perfil profesional. Los requisitos y documentos de cada convocatoria deben verificarse con sus bases oficiales.</p></footer>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <article id="print-cv" class="print-cv" aria-hidden="true"></article>
+  </body>
+</html>
+

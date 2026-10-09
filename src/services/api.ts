@@ -10,6 +10,19 @@ export interface AuthResponse {
   generatedEmail?: string;
 }
 
+async function safeJsonParse(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: res.status >= 500
+        ? 'El servidor no pudo procesar la solicitud en este momento.'
+        : (text.length > 120 ? 'Respuesta inesperada del servidor.' : text)
+    };
+  }
+}
+
 export async function loginUser(identifier: string, password: string): Promise<AuthResponse> {
   try {
     const res = await fetch('/api/auth/login', {
@@ -17,7 +30,7 @@ export async function loginUser(identifier: string, password: string): Promise<A
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ identifier, password }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) {
       return { success: false, error: data.error || 'Credenciales inválidas.' };
     }
@@ -49,7 +62,7 @@ export async function registerUser(username: string, email: string, fullName: st
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, fullName, password }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) {
       return { success: false, error: data.error || 'Error al registrar usuario.' };
     }
@@ -75,7 +88,7 @@ export async function generateCredentialsApi(preferredName?: string): Promise<Au
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ preferredName }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) {
       throw new Error(data.error || 'Error al generar credenciales');
     }
@@ -123,7 +136,7 @@ export async function sendVerificationEmail(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, username, fullName, password }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || 'Error enviando correo');
     return data;
   } catch (err: any) {
@@ -145,7 +158,7 @@ export async function verifyEmailCode(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, code }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) {
       return { success: false, error: data.error || 'Código incorrecto.' };
     }

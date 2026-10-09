@@ -236,155 +236,186 @@ app.get('/api/auth/mail-status', (req, res) => {
 
 // Auth 4: Enviar correo automatizado de verificación a Gmail
 app.post('/api/auth/send-verification-email', async (req, res) => {
-  const { email, fullName, password } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'Correo electrónico requerido.' });
-  }
+  try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    body = body || {};
+    const email = body.email;
+    const fullName = body.fullName;
+    const password = body.password;
 
-  const cleanEmail = String(email).trim().toLowerCase();
-  // El usuario asignado es automáticamente el correo electrónico ingresado
-  const username = cleanEmail;
-  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Correo electrónico requerido.' });
+    }
 
-  console.log(`[PRISMA GMAIL AUTOMATION] Destinatario: ${cleanEmail} | Código de 6 dígitos: ${code}`);
+    const cleanEmail = String(email).trim().toLowerCase();
+    // El usuario asignado es automáticamente el correo electrónico ingresado
+    const username = cleanEmail;
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 
-  // Store pending verification for 15 minutes
-  pendingVerifications[cleanEmail] = {
-    code,
-    userData: {
-      id: `user-${Date.now()}`,
-      username: cleanEmail,
-      email: cleanEmail,
-      fullName: fullName ? String(fullName).trim() : cleanEmail.split('@')[0],
-      password: password || 'Prisma2026!',
-      createdAt: new Date().toISOString(),
-    },
-    expiresAt: Date.now() + 15 * 60 * 1000,
-  };
+    console.log(`[PRISMA GMAIL AUTOMATION] Destinatario: ${cleanEmail} | Código de 6 dígitos: ${code}`);
 
-  const htmlBody = `
-    <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b;">
-      <div style="background: #0f172a; padding: 28px 32px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PRISMA</h1>
-        <p style="color: #94a3b8; font-size: 13px; margin: 6px 0 0 0;">Tu perfil profesional. Un CV para cada oportunidad.</p>
-      </div>
-      <div style="padding: 32px;">
-        <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">¡Hola, ${fullName || cleanEmail}!</h2>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Hemos recibido tu solicitud de creación de cuenta en <strong>PRISMA</strong>. Para activar tu perfil profesional, utiliza el siguiente código de confirmación:
-        </p>
+    // Store pending verification for 15 minutes
+    pendingVerifications[cleanEmail] = {
+      code,
+      userData: {
+        id: `user-${Date.now()}`,
+        username: cleanEmail,
+        email: cleanEmail,
+        fullName: fullName ? String(fullName).trim() : cleanEmail.split('@')[0],
+        password: password || 'Prisma2026!',
+        createdAt: new Date().toISOString(),
+      },
+      expiresAt: Date.now() + 15 * 60 * 1000,
+    };
 
-        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 1px; display: block; margin-bottom: 6px;">Código de Verificación</span>
-          <span style="font-family: monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb;">${code}</span>
-          <span style="font-size: 11px; color: #94a3b8; display: block; margin-top: 6px;">Válido durante los próximos 15 minutos</span>
+    const htmlBody = `
+      <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b;">
+        <div style="background: #0f172a; padding: 28px 32px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PRISMA</h1>
+          <p style="color: #94a3b8; font-size: 13px; margin: 6px 0 0 0;">Tu perfil profesional. Un CV para cada oportunidad.</p>
         </div>
+        <div style="padding: 32px;">
+          <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">¡Hola, ${fullName || cleanEmail}!</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            Hemos recibido tu solicitud de creación de cuenta en <strong>PRISMA</strong>. Para activar tu perfil profesional, utiliza el siguiente código de confirmación:
+          </p>
 
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
-          <h3 style="font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 8px 0;">🔐 Tu Cuenta y Credenciales Automatizadas:</h3>
-          <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
-            <strong>Usuario de acceso:</strong> <span style="font-family: monospace; background: #dbeafe; padding: 2px 6px; rounded: 4px;">${cleanEmail}</span> (tu correo)<br/>
-            <strong>Correo registrado:</strong> ${cleanEmail}<br/>
-            <strong>Contraseña:</strong> ${password ? '••••••••' : 'Generada'}
+          <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 1px; display: block; margin-bottom: 6px;">Código de Verificación</span>
+            <span style="font-family: monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb;">${code}</span>
+            <span style="font-size: 11px; color: #94a3b8; display: block; margin-top: 6px;">Válido durante los próximos 15 minutos</span>
+          </div>
+
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
+            <h3 style="font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 8px 0;">🔐 Tu Cuenta y Credenciales Automatizadas:</h3>
+            <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
+              <strong>Usuario de acceso:</strong> <span style="font-family: monospace; background: #dbeafe; padding: 2px 6px; rounded: 4px;">${cleanEmail}</span> (tu correo)<br/>
+              <strong>Correo registrado:</strong> ${cleanEmail}<br/>
+              <strong>Contraseña:</strong> ${password ? '••••••••' : 'Generada'}
+            </p>
+          </div>
+
+          <p style="font-size: 12px; line-height: 1.5; color: #64748b;">
+            Abre la aplicación de Gmail o tu navegador para copiar este código e ingresarlo en la pantalla de verificación.
           </p>
         </div>
-
-        <p style="font-size: 12px; line-height: 1.5; color: #64748b;">
-          Abre la aplicación de Gmail o tu navegador para copiar este código e ingresarlo en la pantalla de verificación.
-        </p>
+        <div style="background: #f1f5f9; padding: 16px 32px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+          PRISMA © 2026 · Sistema Inteligente de Gestión de Perfil Profesional y CVs
+        </div>
       </div>
-      <div style="background: #f1f5f9; padding: 16px 32px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
-        PRISMA © 2026 · Sistema Inteligente de Gestión de Perfil Profesional y CVs
-      </div>
-    </div>
-  `;
+    `;
 
-  let deliveryMode: 'real_smtp' | 'gmail_automated' = 'gmail_automated';
-  let realDeliveryError: string | null = null;
+    let deliveryMode: 'real_smtp' | 'gmail_automated' = 'gmail_automated';
+    let realDeliveryError: string | null = null;
 
-  // Real delivery via Gmail SMTP if configured
-  const transporter = getMailTransporter();
-  if (transporter) {
+    // Real delivery via Gmail SMTP if configured
     try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || `"PRISMA" <${process.env.SMTP_USER}>`,
-        to: cleanEmail,
-        subject: `PRISMA: Código de Confirmación - ${code}`,
-        text: `Hola ${fullName || cleanEmail},\n\nTu código de verificación en PRISMA es: ${code}\nTu usuario de acceso es: ${cleanEmail}\n`,
-        html: htmlBody,
-      });
-      deliveryMode = 'real_smtp';
-      console.log(`[PRISMA GMAIL AUTOMATION] Entregado con éxito a ${cleanEmail}`);
+      const transporter = getMailTransporter();
+      if (transporter) {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || `"PRISMA" <${process.env.SMTP_USER}>`,
+          to: cleanEmail,
+          subject: `PRISMA: Código de Confirmación - ${code}`,
+          text: `Hola ${fullName || cleanEmail},\n\nTu código de verificación en PRISMA es: ${code}\nTu usuario de acceso es: ${cleanEmail}\n`,
+          html: htmlBody,
+        });
+        deliveryMode = 'real_smtp';
+        console.log(`[PRISMA GMAIL AUTOMATION] Entregado con éxito a ${cleanEmail}`);
+      }
     } catch (err: any) {
       console.warn('[PRISMA GMAIL AUTOMATION] Error en envío directo SMTP:', err.message);
       realDeliveryError = err.message;
     }
+
+    const emailRecord: DispatchedEmail = {
+      id: `msg-${Date.now()}`,
+      to: cleanEmail,
+      subject: `PRISMA: Código de Confirmación - ${code}`,
+      sentAt: new Date().toISOString(),
+      verificationCode: code,
+      username: cleanEmail,
+      tempPassword: password,
+      fullName: fullName || cleanEmail,
+      htmlBody,
+      status: 'delivered',
+    };
+
+    sentEmailsStore.unshift(emailRecord);
+
+    return res.json({
+      success: true,
+      message: deliveryMode === 'real_smtp'
+        ? `Código de verificación enviado exitosamente a ${cleanEmail}`
+        : `Mensaje de confirmación enviado a tu bandeja de Gmail (${cleanEmail})`,
+      emailId: emailRecord.id,
+      email: cleanEmail,
+      deliveryMode,
+      realDeliveryError,
+      sentAt: emailRecord.sentAt,
+    });
+  } catch (err: any) {
+    console.error('[PRISMA GMAIL FATAL ERROR]', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al procesar la solicitud: ' + (err?.message || 'intente de nuevo')
+    });
   }
-
-  const emailRecord: DispatchedEmail = {
-    id: `msg-${Date.now()}`,
-    to: cleanEmail,
-    subject: `PRISMA: Código de Confirmación - ${code}`,
-    sentAt: new Date().toISOString(),
-    verificationCode: code,
-    username: cleanEmail,
-    tempPassword: password,
-    fullName: fullName || cleanEmail,
-    htmlBody,
-    status: 'delivered',
-  };
-
-  sentEmailsStore.unshift(emailRecord);
-
-  return res.json({
-    success: true,
-    message: deliveryMode === 'real_smtp'
-      ? `Código de verificación enviado exitosamente a ${cleanEmail}`
-      : `Mensaje de confirmación enviado a tu bandeja de Gmail (${cleanEmail})`,
-    emailId: emailRecord.id,
-    email: cleanEmail,
-    deliveryMode,
-    realDeliveryError,
-    sentAt: emailRecord.sentAt,
-  });
 });
 
 // Auth 5: Verificar código recibido por correo
 app.post('/api/auth/verify-code', (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code) {
-    return res.status(400).json({ error: 'Correo y código requeridos.' });
-  }
+  try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    body = body || {};
+    const email = body.email;
+    const code = body.code;
 
-  const cleanEmail = String(email).trim().toLowerCase();
-  const cleanCode = String(code).trim();
-  const pending = pendingVerifications[cleanEmail];
+    if (!email || !code) {
+      return res.status(400).json({ success: false, error: 'Correo y código requeridos.' });
+    }
 
-  if (!pending) {
-    return res.status(404).json({ error: 'No hay ningún código pendiente para este correo. Solicita uno nuevo.' });
-  }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(code).trim();
+    const pending = pendingVerifications[cleanEmail];
 
-  if (Date.now() > pending.expiresAt) {
+    if (!pending) {
+      return res.status(404).json({ success: false, error: 'No hay ningún código pendiente para este correo. Solicita uno nuevo.' });
+    }
+
+    if (Date.now() > pending.expiresAt) {
+      delete pendingVerifications[cleanEmail];
+      return res.status(410).json({ success: false, error: 'El código ha expirado. Por favor solicita uno nuevo.' });
+    }
+
+    if (pending.code !== cleanCode) {
+      return res.status(400).json({ success: false, error: 'Código incorrecto. Verifica los 6 dígitos que llegaron a tu bandeja.' });
+    }
+
+    // Verification successful: register user into storage
+    const userData = pending.userData;
+    usersStore.push(userData);
     delete pendingVerifications[cleanEmail];
-    return res.status(410).json({ error: 'El código ha expirado. Por favor solicita uno nuevo.' });
+
+    const { password: _, ...safeUser } = userData;
+    return res.json({
+      success: true,
+      message: '¡Correo verificado y cuenta activada con éxito!',
+      user: safeUser,
+      token: `tm_token_${userData.id}_${Date.now()}`
+    });
+  } catch (err: any) {
+    console.error('[PRISMA VERIFY FATAL ERROR]', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al verificar código: ' + (err?.message || 'intente de nuevo')
+    });
   }
-
-  if (pending.code !== cleanCode) {
-    return res.status(400).json({ error: 'Código incorrecto. Verifica los 6 dígitos que llegaron a tu bandeja.' });
-  }
-
-  // Verification successful: register user into storage
-  const userData = pending.userData;
-  usersStore.push(userData);
-  delete pendingVerifications[cleanEmail];
-
-  const { password: _, ...safeUser } = userData;
-  return res.json({
-    success: true,
-    message: '¡Correo verificado y cuenta activada con éxito!',
-    user: safeUser,
-    token: `tm_token_${userData.id}_${Date.now()}`
-  });
 });
 
 // Endpoint to view inbox messages (for live test inspector)

@@ -537,113 +537,67 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 </button>
               </div>
 
-              {/* Diagnóstico de Conexión de Gmail */}
-              <div className="pt-3 border-t border-neutral-100 text-center">
-                <button
-                  type="button"
-                  onClick={handleTestGmailConnection}
-                  disabled={isTestingMail}
-                  className="text-[11px] text-neutral-500 hover:text-neutral-800 font-medium inline-flex items-center gap-1.5 transition-colors"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isTestingMail ? 'animate-spin text-blue-600' : ''}`} />
-                  <span>Comprobar conexión del servidor con Gmail</span>
-                </button>
-
-                {testMailNotice && (
-                  <div className="mt-2 p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] text-neutral-700 leading-relaxed text-left animate-in fade-in">
-                    <p>{testMailNotice}</p>
-                    {mailStatus?.connected && (
-                      <button
-                        type="button"
-                        onClick={handleSendLiveTestEmail}
-                        disabled={isTestingMail}
-                        className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
-                      >
-                        <Send className="w-3 h-3" />
-                        <span>Enviar correo de prueba a {pendingEmail}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Acceso directo para conectar Gmail en 1 paso */}
-                {!mailStatus?.connected && (
-                  <div className="mt-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowDirectSmtpSetup(!showDirectSmtpSetup)}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1.5 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
-                    >
-                      <Key className="w-3.5 h-3.5" />
-                      <span>{showDirectSmtpSetup ? 'Ocultar conexión rápida' : '⚡ Conectar mi cuenta de Gmail aquí (en 1 paso)'}</span>
-                    </button>
-                  </div>
-                )}
-
-                {showDirectSmtpSetup && (
-                  <form onSubmit={handleConfigureDirectSmtp} className="mt-3 p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl text-left space-y-2.5 animate-in fade-in">
-                    <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              {/* Caja Permanente y Visible para Activar las 16 Letras de prisma.dig.office@gmail.com */}
+              {!mailStatus?.connected ? (
+                <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl text-left space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
                       <Key className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Vincular Remitente de Gmail</span>
-                    </div>
-                    <p className="text-[11px] text-blue-800/80 leading-relaxed">
-                      Activa <strong>prisma.dig.office@gmail.com</strong> para que PRISMA despache automáticamente los códigos a todos los nuevos usuarios:
-                    </p>
+                      Activar Remitente (prisma.dig.office@gmail.com)
+                    </span>
+                    <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                      Paso Único
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-blue-900/80 leading-relaxed">
+                    Pega aquí tus <strong>16 letras de Google</strong> para que el servidor envíe el código automáticamente a tu correo:
+                  </p>
+
+                  <form onSubmit={handleConfigureDirectSmtp} className="space-y-2">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-600 mb-1">
-                        Correo Remitente Oficial
-                      </label>
                       <input
-                        type="email"
+                        type="text"
                         required
-                        placeholder="prisma.dig.office@gmail.com"
-                        value={directGmailUser || 'prisma.dig.office@gmail.com'}
-                        onChange={e => setDirectGmailUser(e.target.value)}
-                        className="w-full text-xs px-3 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 font-medium"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-600">
-                          Contraseña de Aplicación de Google (16 letras)
-                        </label>
-                        <a
-                          href="https://myaccount.google.com/apppasswords"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-0.5"
-                        >
-                          <span>Obtener clave</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
-                      <input
-                        type="password"
-                        required
-                        placeholder="abcd efgh ijkl mnop"
+                        placeholder="Pega aquí tus 16 letras (ej. abcd efgh ijkl mnop)"
                         value={directGmailPass}
                         onChange={e => setDirectGmailPass(e.target.value)}
-                        className="w-full text-xs px-3 py-2 font-mono tracking-wider bg-white border border-neutral-300 rounded-lg text-neutral-900 placeholder:tracking-normal"
+                        className="w-full text-xs px-3 py-2.5 font-mono tracking-wider bg-white border border-blue-300 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-xs"
                       />
                     </div>
 
                     {directSmtpFeedback && (
-                      <div className={`p-2 rounded-lg text-[11px] font-medium ${directSmtpFeedback.startsWith('🎉') ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}`}>
+                      <div className={`p-2 rounded-xl text-[11px] font-medium ${directSmtpFeedback.startsWith('🎉') ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-800'}`}>
                         {directSmtpFeedback}
                       </div>
                     )}
 
                     <button
                       type="submit"
-                      disabled={isSavingDirectSmtp}
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                      disabled={isSavingDirectSmtp || !directGmailPass.trim()}
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span>{isSavingDirectSmtp ? 'Validando con Google...' : 'Guardar y Activar Envío de Gmail'}</span>
                       <Check className="w-3.5 h-3.5" />
+                      <span>{isSavingDirectSmtp ? 'Validando con Google...' : 'Activar y Enviar Código a mi Gmail Ahora'}</span>
                     </button>
                   </form>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-semibold">prisma.dig.office@gmail.com conectado con éxito.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSendLiveTestEmail}
+                    disabled={isTestingMail}
+                    className="text-xs text-blue-700 font-bold underline"
+                  >
+                    Reenviar correo
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

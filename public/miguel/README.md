@@ -11,6 +11,6 @@ Sitio estático dentro del repositorio PRISMA_CV. En Vercel, el proyecto públic
 
 ## Despliegue
 
-Vercel debe publicar desde la rama `feature/miguel-public-profile` y usar `public/miguel` como raíz del proyecto. Los cambios nuevos de esta rama generan un despliegue nuevo; repetir un despliegue anterior puede conservar la configuración antigua.
+Vercel publica desde la rama `feature/miguel-public-profile`, con `public/miguel` como raíz, comando de compilación `echo Static profile: no build required` y directorio de salida `.`. Los nuevos commits de esta rama generan despliegues nuevos.
 
 Confirma el contenido del CV, el correo visible y los enlaces antes de compartir la dirección pública. No añadas DNI, certificados ni expedientes al repositorio.

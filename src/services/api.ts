@@ -307,6 +307,46 @@ export async function fetchInboxMessages(email: string): Promise<any[]> {
   }
 }
 
+export async function checkMailStatus(): Promise<{
+  configured: boolean;
+  connected: boolean;
+  mode?: string;
+  configuredUser?: string | null;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/auth/mail-status');
+    const data = await safeJsonParse(res);
+    return data;
+  } catch (err: any) {
+    return {
+      configured: false,
+      connected: false,
+      message: 'No se pudo verificar el estado del servicio de correo.',
+      error: err.message,
+    };
+  }
+}
+
+export async function sendTestEmail(email?: string): Promise<{ success: boolean; message: string; error?: string }> {
+  try {
+    const res = await fetch('/api/auth/test-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await safeJsonParse(res);
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Error al enviar correo de prueba.',
+      error: err.message,
+    };
+  }
+}
+
 export async function extractDocumentText(file: File): Promise<{ success: boolean; text: string; fileName: string; error?: string }> {
   try {
     const arrayBuffer = await file.arrayBuffer();

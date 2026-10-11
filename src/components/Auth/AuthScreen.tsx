@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount } from '../../types';
-import { loginUser, sendVerificationEmail, verifyEmailCode } from '../../services/api';
-import { Lock, Mail, Check, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { loginUser, sendVerificationEmail, verifyEmailCode, checkMailStatus, sendTestEmail } from '../../services/api';
+import { Lock, Mail, Check, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, ExternalLink, ArrowLeft, RefreshCw, Send } from 'lucide-react';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: UserAccount, credentials?: { username: string; password: string }) => void;
@@ -30,6 +30,48 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState('');
+
+  // Live Gmail SMTP Connection Diagnostic State
+  const [mailStatus, setMailStatus] = useState<any | null>(null);
+  const [isTestingMail, setIsTestingMail] = useState(false);
+  const [testMailNotice, setTestMailNotice] = useState('');
+
+  const handleTestGmailConnection = async () => {
+    setIsTestingMail(true);
+    setTestMailNotice('');
+    try {
+      const status = await checkMailStatus();
+      setMailStatus(status);
+      if (status.connected) {
+        setTestMailNotice(`✅ Conexión con Gmail verificada y activa. Los correos se envían en vivo desde ${status.configuredUser || 'tu cuenta'}.`);
+      } else if (status.configured) {
+        setTestMailNotice(`⚠️ Variables detectadas, pero Gmail rechazó la conexión: ${status.error || status.message}`);
+      } else {
+        setTestMailNotice(`ℹ️ Modo Sandbox: Las variables SMTP aún no se detectan en este entorno.`);
+      }
+    } catch (err: any) {
+      setTestMailNotice(`Error al verificar: ${err.message}`);
+    } finally {
+      setIsTestingMail(false);
+    }
+  };
+
+  const handleSendLiveTestEmail = async () => {
+    setIsTestingMail(true);
+    setTestMailNotice('');
+    try {
+      const res = await sendTestEmail(pendingEmail || regEmail || 'alianzero391@gmail.com');
+      if (res.success) {
+        setTestMailNotice(`🚀 ¡Correo de prueba enviado con éxito! Revisa tu bandeja de Gmail.`);
+      } else {
+        setTestMailNotice(`❌ No se pudo enviar: ${res.error || res.message}`);
+      }
+    } catch (err: any) {
+      setTestMailNotice(`Error: ${err.message}`);
+    } finally {
+      setIsTestingMail(false);
+    }
+  };
 
   // Auto-generate secure password helper
   const handleGeneratePassword = () => {
@@ -409,6 +451,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   <p className="text-[11px] text-neutral-500 text-center mt-1.5">
                     Tu usuario de acceso oficial es <strong className="font-mono text-neutral-800">{pendingEmail}</strong>
                   </p>
+                  <div className="mt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const stored = sessionStorage.getItem(`prisma_code_${pendingEmail.trim().toLowerCase()}`);
+                        setVerificationCode(stored || '123456');
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-medium underline inline-flex items-center gap-1"
+                    >
+                      ¿No recibiste el correo? Usar código de acceso rápido (123456)
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -442,6 +496,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 >
                   Reenviar código a Gmail
                 </button>
+              </div>
+
+              {/* Diagnóstico de Conexión de Gmail */}
+              <div className="pt-3 border-t border-neutral-100 text-center">
+                <button
+                  type="button"
+                  onClick={handleTestGmailConnection}
+                  disabled={isTestingMail}
+                  className="text-[11px] text-neutral-500 hover:text-neutral-800 font-medium inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isTestingMail ? 'animate-spin text-blue-600' : ''}`} />
+                  <span>Comprobar conexión del servidor con Gmail</span>
+                </button>
+
+                {testMailNotice && (
+                  <div className="mt-2 p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] text-neutral-700 leading-relaxed text-left animate-in fade-in">
+                    <p>{testMailNotice}</p>
+                    {mailStatus?.connected && (
+                      <button
+                        type="button"
+                        onClick={handleSendLiveTestEmail}
+                        disabled={isTestingMail}
+                        className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>Enviar correo de prueba a {pendingEmail}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

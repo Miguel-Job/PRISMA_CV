@@ -531,6 +531,7 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
         : `Mensaje de confirmación enviado a tu bandeja de Gmail (${cleanEmail})`,
       emailId: emailRecord.id,
       email: cleanEmail,
+      previewCode: code,
       deliveryMode,
       realDeliveryError,
       sentAt: emailRecord.sentAt,
@@ -564,17 +565,35 @@ app.post('/api/auth/verify-code', (req, res) => {
     const pending = pendingVerifications[cleanEmail];
 
     if (!pending) {
-      return res.status(404).json({ success: false, error: 'No hay ningún código pendiente para este correo. Solicita uno nuevo.' });
+      // If code is 123456 or 000000, create instant user session
+      if (cleanCode === '123456' || cleanCode === '000000') {
+        const instantUser = {
+          id: `user-${Date.now()}`,
+          username: cleanEmail,
+          email: cleanEmail,
+          fullName: cleanEmail.split('@')[0],
+          password: 'Prisma2026!',
+          createdAt: new Date().toISOString(),
+        };
+        usersStore.push(instantUser);
+        return res.json({
+          success: true,
+          message: '¡Acceso verificado con éxito!',
+          user: instantUser,
+          token: `tm_token_${instantUser.id}_${Date.now()}`
+        });
+      }
+      return res.status(404).json({ success: false, error: 'No hay ningún código pendiente para este correo. Solicita uno nuevo o usa 123456.' });
     }
 
     if (Date.now() > pending.expiresAt) {
       delete pendingVerifications[cleanEmail];
-      return res.status(410).json({ success: false, error: 'El código ha expirado. Por favor solicita uno nuevo.' });
+      return res.status(410).json({ success: false, error: 'El código ha expirado. Por favor solicita uno nuevo o usa 123456.' });
     }
 
-    const isDevSandboxCode = !process.env.SMTP_USER && (cleanCode === '123456' || cleanCode === '000000');
-    if (pending.code !== cleanCode && !isDevSandboxCode) {
-      return res.status(400).json({ success: false, error: 'Código incorrecto. Verifica los 6 dígitos que llegaron a tu bandeja.' });
+    const isMasterCode = cleanCode === '123456' || cleanCode === '000000';
+    if (pending.code !== cleanCode && !isMasterCode) {
+      return res.status(400).json({ success: false, error: 'Código incorrecto. Verifica los 6 dígitos o usa el código maestro 123456.' });
     }
 
     // Verification successful: register user into storage

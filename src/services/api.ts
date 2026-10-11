@@ -347,6 +347,31 @@ export async function sendTestEmail(email?: string): Promise<{ success: boolean;
   }
 }
 
+export async function configureSmtp(user: string, pass: string): Promise<{
+  success: boolean;
+  connected: boolean;
+  configuredUser?: string;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/auth/configure-smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user, pass }),
+    });
+    const data = await safeJsonParse(res);
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      connected: false,
+      message: 'Error al conectar con Gmail.',
+      error: err.message,
+    };
+  }
+}
+
 export async function extractDocumentText(file: File): Promise<{ success: boolean; text: string; fileName: string; error?: string }> {
   try {
     const arrayBuffer = await file.arrayBuffer();

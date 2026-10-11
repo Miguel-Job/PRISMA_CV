@@ -192,43 +192,68 @@ interface DispatchedEmail {
 const sentEmailsStore: DispatchedEmail[] = [];
 const pendingVerifications: Record<string, { code: string; userData: any; expiresAt: number }> = {};
 
-// Check if Real SMTP credentials are provided in environment
+export const DEFAULT_SENDER_EMAIL = 'prisma.dig.office@gmail.com';
+
+// Runtime SMTP config store
+let runtimeSmtp = {
+  user: process.env.SMTP_USER || DEFAULT_SENDER_EMAIL,
+  pass: process.env.SMTP_PASS || '',
+  from: process.env.SMTP_FROM || `PRISMA <${DEFAULT_SENDER_EMAIL}>`,
+};
+
+// Check if Real SMTP credentials are provided in environment or runtime
 function getMailTransporter() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!user || !pass) return null;
+  const user = runtimeSmtp.user?.trim() || process.env.SMTP_USER?.trim() || DEFAULT_SENDER_EMAIL;
+  const rawPass = runtimeSmtp.pass?.trim() || process.env.SMTP_PASS?.trim() || null;
+  if (!rawPass) return null;
+
+  // Clean all spaces, tabs, or newlines that Google adds to app passwords (e.g. 'abcd efgh ijkl mnop' -> 'abcdefghijklmnop')
+  const pass = rawPass.replace(/[\s\r\n\t]/g, '');
 
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  if (host.includes('gmail')) {
+  const isGmail = host.includes('gmail') || user.endsWith('@gmail.com');
+
+  if (isGmail) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // SSL port 465
       auth: {
         user,
         pass,
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     });
   }
 
   return nodemailer.createTransport({
     host,
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
-    secure: process.env.SMTP_SECURE === 'true',
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465,
+    secure: process.env.SMTP_SECURE !== 'false',
     auth: {
       user,
       pass,
+    },
+    tls: {
+      rejectUnauthorized: false,
     },
   });
 }
 
 // Mail service status check with live transporter verification
 app.get('/api/auth/mail-status', async (req, res) => {
-  const isConfigured = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+  const activeUser = runtimeSmtp.user || process.env.SMTP_USER;
+  const activePass = runtimeSmtp.pass || process.env.SMTP_PASS;
+  const isConfigured = Boolean(activeUser && activePass);
+
   if (!isConfigured) {
     return res.json({
       configured: false,
       connected: false,
       mode: 'sandbox',
-      message: 'Las variables SMTP_USER y SMTP_PASS no están configuradas en este entorno.',
+      message: 'Las variables SMTP aún no se detectan en este entorno.',
     });
   }
 
@@ -240,8 +265,8 @@ app.get('/api/auth/mail-status', async (req, res) => {
       configured: true,
       connected: true,
       mode: 'real_smtp',
-      configuredUser: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 4)}***@gmail.com` : null,
-      message: '¡Conexión exitosa con el servidor SMTP de Gmail! Los correos llegarán directamente a las bandejas reales.',
+      configuredUser: activeUser ? `${activeUser.slice(0, 4)}***@gmail.com` : null,
+      message: `¡Conexión exitosa con el servidor SMTP de Gmail! Los correos se envían en vivo desde ${activeUser}.`,
     });
   } catch (err: any) {
     return res.json({
@@ -249,7 +274,84 @@ app.get('/api/auth/mail-status', async (req, res) => {
       connected: false,
       mode: 'error',
       error: err.message,
-      message: 'Variables detectadas pero Gmail rechazó la autenticación. Verifica que la contraseña de aplicación de 16 caracteres sea correcta.',
+      message: 'Credenciales detectadas pero Gmail rechazó la autenticación. Verifica la contraseña de aplicación.',
+    });
+  }
+});
+
+// Configure and test Gmail connection directly from app
+app.post('/api/auth/configure-smtp', async (req, res) => {
+  try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    body = body || {};
+    const { user, pass } = body;
+
+    if (!user || !pass) {
+      return res.status(400).json({ success: false, error: 'Correo de Gmail y contraseña de aplicación requeridos.' });
+    }
+
+    const cleanUser = String(user).trim().toLowerCase();
+    const cleanPass = String(pass).trim().replace(/[\s\r\n\t]/g, '');
+
+    const testTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: cleanUser,
+        pass: cleanPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    await testTransporter.verify();
+
+    // Verification passed: update runtime state
+    runtimeSmtp.user = cleanUser;
+    runtimeSmtp.pass = cleanPass;
+    runtimeSmtp.from = `PRISMA <${cleanUser}>`;
+
+    // Dispatch a real confirmation email immediately
+    try {
+      await testTransporter.sendMail({
+        from: `PRISMA <${cleanUser}>`,
+        to: cleanUser,
+        subject: 'PRISMA: ¡Tu cuenta de Gmail ha sido conectada con éxito!',
+        text: `Hola,\n\nTu cuenta de Gmail (${cleanUser}) ha sido conectada exitosamente al sistema PRISMA. Los correos de verificación y códigos ahora llegarán en vivo a las bandejas reales.`,
+        html: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff;">
+            <h2 style="color: #2563eb; margin-top: 0;">🎉 ¡Gmail Conectado con Éxito a PRISMA!</h2>
+            <p style="color: #334155; line-height: 1.5;">Tu cuenta <strong>${cleanUser}</strong> ahora está activada como remitente oficial para el despacho automatizado de códigos.</p>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin: 18px 0; color: #166534; font-size: 13px;">
+              ✅ <strong>Estado:</strong> Conectado y Verificado en los servidores de Google.<br/>
+              🚀 <strong>Capacidad:</strong> Despacho automático de códigos de 6 dígitos.
+            </div>
+            <p style="color: #64748b; font-size: 12px;">PRISMA © 2026 · Perfil Profesional</p>
+          </div>
+        `,
+      });
+    } catch (e: any) {
+      console.warn('Confirmation email dispatch warning:', e?.message);
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      configuredUser: cleanUser,
+      message: `¡Excelente! Conexión validada exitosamente con Google. Se envió un correo de bienvenida a ${cleanUser}.`,
+    });
+  } catch (err: any) {
+    console.error('Configure SMTP error:', err);
+    return res.status(400).json({
+      success: false,
+      connected: false,
+      error: err.message || 'Gmail rechazó la autenticación.',
+      message: 'Google rechazó la contraseña. Verifica que la contraseña de aplicación de 16 caracteres de myaccount.google.com/apppasswords sea correcta.',
     });
   }
 });

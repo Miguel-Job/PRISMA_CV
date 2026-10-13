@@ -39,6 +39,7 @@ export default async function handler(req: any, res: any) {
         email: cleanEmail,
         fullName: fullName || cleanEmail.split('@')[0],
         createdAt: new Date().toISOString(),
+        ...body,
       },
       expiresAt: Date.now() + 15 * 60 * 1000,
     };

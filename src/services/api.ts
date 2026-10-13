@@ -173,20 +173,38 @@ export async function sendVerificationEmail(
   email: string,
   username: string,
   fullName: string,
-  password?: string
+  password?: string,
+  extraProfileData?: Partial<UserAccount>
 ): Promise<{ success: boolean; message?: string; error?: string; previewCode?: string; emailId?: string }> {
   const cleanEmail = email.trim().toLowerCase();
   try {
     const res = await fetch('/api/auth/send-verification-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail, username: cleanEmail, fullName, password }),
+      body: JSON.stringify({
+        email: cleanEmail,
+        username: cleanEmail,
+        fullName,
+        password,
+        ...extraProfileData
+      }),
     });
     const data = await safeJsonParse(res);
     if (res.ok && data.success) {
       if (data.previewCode) {
         try { sessionStorage.setItem(`prisma_code_${cleanEmail}`, data.previewCode); } catch {}
       }
+      try {
+        sessionStorage.setItem(`prisma_user_${cleanEmail}`, JSON.stringify({
+          id: `user-${Date.now()}`,
+          username: cleanEmail,
+          email: cleanEmail,
+          fullName: fullName || cleanEmail.split('@')[0],
+          password: password || 'Prisma2026!',
+          createdAt: new Date().toISOString(),
+          ...extraProfileData,
+        }));
+      } catch {}
       return data;
     }
     if (res.status === 400 && data.error) {
@@ -204,6 +222,7 @@ export async function sendVerificationEmail(
         fullName: fullName || cleanEmail.split('@')[0],
         password: password || 'Prisma2026!',
         createdAt: new Date().toISOString(),
+        ...extraProfileData,
       }));
     } catch {}
     return {
@@ -224,6 +243,7 @@ export async function sendVerificationEmail(
         fullName: fullName || cleanEmail.split('@')[0],
         password: password || 'Prisma2026!',
         createdAt: new Date().toISOString(),
+        ...extraProfileData,
       }));
     } catch {}
     return {

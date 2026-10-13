@@ -5,10 +5,34 @@ export interface UserAccount {
   username: string;
   email: string;
   fullName: string;
+  firstName?: string;
+  lastName1?: string;
+  lastName2?: string;
+  gender?: string;
+  birthDate?: string;
+  nationality?: string;
+  idDocumentType?: string;
+  idDocumentNumber?: string;
+  streetType?: string;
+  fullAddress?: string;
+  locality?: string;
+  province?: string;
+  postalCode?: string;
+  countryOfResidence?: string;
+  phone?: string;
+  mobilePhone?: string;
+  // Ámbito y perfil profesional enfocado en PRISMA
+  professionalArea?: string;
+  academicDegree?: string;
+  specialty?: string;
+  yearsOfExperience?: string;
+  preferredWorkMode?: string;
+  subscribedNewsletter?: boolean;
   avatarUrl?: string;
   createdAt: string;
   lastLogin: string;
-  passwordHash?: string; // used for stored accounts
+  passwordHash?: string;
+  role?: string;
 }
 
 export interface DocumentItem {

@@ -446,6 +446,7 @@ app.post('/api/auth/send-verification-email', async (req, res) => {
         fullName: fullName ? String(fullName).trim() : cleanEmail.split('@')[0],
         password: password || 'Prisma2026!',
         createdAt: new Date().toISOString(),
+        ...body,
       },
       expiresAt: Date.now() + 15 * 60 * 1000,
     };

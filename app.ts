@@ -32,7 +32,7 @@ if (apiKey) {
 }
 
 // In-memory demo users storage
-const usersStore: Array<{ id: string; username: string; email: string; fullName: string; password: string; createdAt: string; role?: string }> = [
+const usersStore: Array<{ id: string; username: string; email: string; fullName: string; password: string; createdAt: string; role?: string; professionalArea?: string }> = [
   {
     id: 'user-admin-master',
     username: 'admin',
@@ -40,7 +40,8 @@ const usersStore: Array<{ id: string; username: string; email: string; fullName:
     fullName: 'Administrador General PRISMA',
     password: 'Admin2026!',
     createdAt: '2026-01-01T00:00:00Z',
-    role: 'admin',
+    role: 'Administrador',
+    professionalArea: 'Gestión General de Plataforma',
   },
   {
     id: 'user-carlos-1',
@@ -49,6 +50,38 @@ const usersStore: Array<{ id: string; username: string; email: string; fullName:
     fullName: 'Carlos Alberto Mendoza Alarcón',
     password: 'Talento2026!',
     createdAt: '2026-08-15T10:00:00Z',
+    role: 'Profesional Principal',
+    professionalArea: 'Recursos Hídricos y Gestión Ambiental',
+  },
+  {
+    id: 'user-alianzero-1',
+    username: 'alianzero391@gmail.com',
+    email: 'alianzero391@gmail.com',
+    fullName: 'Usuario Principal (Alianzero)',
+    password: 'Prisma2026!',
+    createdAt: '2026-10-09T02:50:00Z',
+    role: 'Profesional Verificado',
+    professionalArea: 'Recursos Hídricos e Ingeniería',
+  },
+  {
+    id: 'user-mangel-1',
+    username: 'mangeltorresd99@gmail.com',
+    email: 'mangeltorresd99@gmail.com',
+    fullName: 'Miky (Mangel Torres)',
+    password: 'Prisma2026!',
+    createdAt: '2026-10-10T14:30:00Z',
+    role: 'Profesional Verificado',
+    professionalArea: 'Tecnología y Gestión de Proyectos',
+  },
+  {
+    id: 'user-scjasjc-1',
+    username: 'scjasjc@gmail.com',
+    email: 'scjasjc@gmail.com',
+    fullName: 'Juan Carlos',
+    password: 'Prisma2026!',
+    createdAt: '2026-10-10T16:15:00Z',
+    role: 'Profesional Verificado',
+    professionalArea: 'Ingeniería y Proyectos',
   }
 ];
 
@@ -626,6 +659,24 @@ app.get('/api/auth/inbox-messages', (req, res) => {
   }
   const filtered = sentEmailsStore.filter(m => m.to.toLowerCase() === email);
   return res.json({ messages: filtered });
+});
+
+// Endpoint to view all registered users in PRISMA
+app.get('/api/auth/users-list', (req, res) => {
+  const safeUsers = usersStore.map(u => ({
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    fullName: u.fullName,
+    role: u.role || 'Profesional',
+    professionalArea: u.professionalArea || 'General',
+    createdAt: u.createdAt,
+    hasPassword: Boolean(u.password),
+  }));
+  return res.json({
+    total: safeUsers.length,
+    users: safeUsers,
+  });
 });
 
 // AI & Document Endpoints

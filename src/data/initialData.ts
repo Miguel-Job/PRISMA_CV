@@ -1,4 +1,4 @@
-import { MasterProfile, DocumentItem, CVVersion, JobApplication, PrivacySettings } from '../types';
+import { MasterProfile, DocumentItem, CVVersion, JobApplication, PrivacySettings, UserAccount } from '../types';
 
 export const INITIAL_DOCUMENTS: DocumentItem[] = [
   {
@@ -302,13 +302,56 @@ export const INITIAL_APPLICATIONS: JobApplication[] = [
 
 export const INITIAL_PRIVACY_SETTINGS: PrivacySettings = {
   visibility: 'link_only',
-  shareableUrlSlug: 'carlos-mendoza-hidro',
+  shareableUrlSlug: 'perfil-privado',
   allowAiAnalysis: true,
   maskContactInfoInPublic: true,
   allowDocumentDownloadByOthers: false,
   activityLogs: [
-    { action: 'Perfil maestro creado', timestamp: '2026-08-15 10:00' },
-    { action: 'CV v3 vinculado a Convocatoria CAS ANA', timestamp: '2026-09-12 14:15' },
-    { action: 'Auditoría ATS completada con resultado 88%', timestamp: '2026-09-20 17:30' },
+    { action: 'Cuenta y entorno privado creados en PRISMA', timestamp: new Date().toISOString() },
   ],
 };
+
+// Generadores de espacio de trabajo limpio en blanco (Clean Slate para nuevos usuarios)
+export const createEmptyProfile = (user?: Partial<UserAccount> | null): MasterProfile => ({
+  id: `master-profile-${user?.id || Date.now()}`,
+  updatedAt: new Date().toISOString(),
+  personalInfo: {
+    fullName: user?.fullName || '',
+    professionalTitle: user?.specialty
+      ? `${user.professionalArea || 'Profesional'} · ${user.specialty}`
+      : (user?.professionalArea || ''),
+    email: user?.email || '',
+    phone: user?.mobilePhone || user?.phone || '',
+    location: user?.province
+      ? `${user.locality ? user.locality + ', ' : ''}${user.province}`
+      : (user?.countryOfResidence || ''),
+    country: user?.countryOfResidence || 'Perú',
+    dniOrId: user?.idDocumentNumber || '',
+    collegeNumber: '',
+    linkedinUrl: '',
+    portfolioUrl: '',
+    avatarUrl: user?.avatarUrl || '',
+  },
+  summary: '',
+  experiences: [],
+  education: [],
+  skills: [],
+  languages: [],
+  projects: [],
+  certifications: [],
+});
+
+export const createEmptyCvVersions = (): CVVersion[] => [];
+export const createEmptyApplications = (): JobApplication[] => [];
+export const createEmptyDocuments = (): DocumentItem[] => [];
+export const createEmptyPrivacySettings = (user?: Partial<UserAccount> | null): PrivacySettings => ({
+  visibility: 'private',
+  shareableUrlSlug: user?.username ? `perfil-${user.username}` : `perfil-${Date.now()}`,
+  allowAiAnalysis: true,
+  maskContactInfoInPublic: true,
+  allowDocumentDownloadByOthers: false,
+  activityLogs: [
+    { action: 'Entorno de usuario privado inicializado en PRISMA', timestamp: new Date().toISOString() },
+  ],
+});
+

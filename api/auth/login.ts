@@ -21,12 +21,16 @@ export default function handler(req: any, res: any) {
 
     const clean = String(identifier).trim().toLowerCase();
 
+    const isAdmin = clean === 'prisma.dig.office@gmail.com' || clean === 'prisma.dig.office' || clean === 'admin';
+
     // Standard demo accounts or any verified user
     const user = {
-      id: `user-${Date.now()}`,
-      username: clean,
-      email: clean,
-      fullName: clean.split('@')[0],
+      id: isAdmin ? 'user-admin-prisma-office' : `user-${Date.now()}`,
+      username: isAdmin ? 'prisma.dig.office' : clean,
+      email: isAdmin ? 'prisma.dig.office@gmail.com' : clean,
+      fullName: isAdmin ? 'Administración General PRISMA' : clean.split('@')[0],
+      role: isAdmin ? 'admin_general' : 'Profesional',
+      professionalArea: isAdmin ? 'Supervisión y Dirección General de Plataforma' : 'General',
       createdAt: new Date().toISOString(),
     };
 

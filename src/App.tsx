@@ -5,6 +5,11 @@ import {
   INITIAL_APPLICATIONS,
   INITIAL_DOCUMENTS,
   INITIAL_PRIVACY_SETTINGS,
+  createEmptyProfile,
+  createEmptyCvVersions,
+  createEmptyApplications,
+  createEmptyDocuments,
+  createEmptyPrivacySettings,
 } from './data/initialData';
 import { MasterProfile, CVVersion, JobApplication, DocumentItem, PrivacySettings, ApplicationStatus, UserAccount } from './types';
 import { Navbar } from './components/Navbar';
@@ -20,7 +25,9 @@ import { VacancyAdaptModal } from './components/VacancyAdapt/VacancyAdaptModal';
 import { PrivacyModal } from './components/PrivacyCenter/PrivacyModal';
 import { ATSReviewModal } from './components/ATSReview/ATSReviewModal';
 import { AuthScreen } from './components/Auth/AuthScreen';
-import { Key, Copy, Check, X, ShieldCheck } from 'lucide-react';
+import { PresentationView } from './components/Presentation/PresentationView';
+import { AdminSupervisorDashboard } from './components/Admin/AdminSupervisorDashboard';
+import { Key, Copy, Check, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 export default function App() {
   // Authentication State
@@ -28,6 +35,14 @@ export default function App() {
     const saved = localStorage.getItem('tm_auth_user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // View mode: 'presentation' by default when not logged in, 'app' when logged in
+  const [viewMode, setViewMode] = useState<'presentation' | 'auth' | 'app'>(() => {
+    const saved = localStorage.getItem('tm_auth_user');
+    return saved ? 'app' : 'presentation';
+  });
+
+  const [authInitialTab, setAuthInitialTab] = useState<'login' | 'register'>('login');
 
   const [activeCredentials, setActiveCredentials] = useState<{ username: string; password: string } | null>(() => {
     const saved = localStorage.getItem('tm_active_creds');
@@ -37,34 +52,49 @@ export default function App() {
   const [newCredentialsNotice, setNewCredentialsNotice] = useState<{ username: string; password: string } | null>(null);
   const [copiedNotice, setCopiedNotice] = useState(false);
 
-  // Load profile state from LocalStorage or fall back to rich default data
+  // Load profile state from LocalStorage scoped by user ID or fall back to clean empty profile
   const [profile, setProfile] = useState<MasterProfile>(() => {
-    const saved = localStorage.getItem('tm_master_profile');
-    return saved ? JSON.parse(saved) : INITIAL_PROFILE;
+    if (!currentUser) return createEmptyProfile();
+    const userKey = `tm_master_profile_${currentUser.id}`;
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : createEmptyProfile(currentUser);
   });
 
   const [cvVersions, setCvVersions] = useState<CVVersion[]>(() => {
-    const saved = localStorage.getItem('tm_cv_versions');
-    return saved ? JSON.parse(saved) : INITIAL_CV_VERSIONS;
+    if (!currentUser) return createEmptyCvVersions();
+    const userKey = `tm_cv_versions_${currentUser.id}`;
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : createEmptyCvVersions();
   });
 
   const [applications, setApplications] = useState<JobApplication[]>(() => {
-    const saved = localStorage.getItem('tm_applications');
-    return saved ? JSON.parse(saved) : INITIAL_APPLICATIONS;
+    if (!currentUser) return createEmptyApplications();
+    const userKey = `tm_applications_${currentUser.id}`;
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : createEmptyApplications();
   });
 
   const [documents, setDocuments] = useState<DocumentItem[]>(() => {
-    const saved = localStorage.getItem('tm_documents');
-    return saved ? JSON.parse(saved) : INITIAL_DOCUMENTS;
+    if (!currentUser) return createEmptyDocuments();
+    const userKey = `tm_documents_${currentUser.id}`;
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : createEmptyDocuments();
   });
 
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(() => {
-    const saved = localStorage.getItem('tm_privacy');
-    return saved ? JSON.parse(saved) : INITIAL_PRIVACY_SETTINGS;
+    if (!currentUser) return createEmptyPrivacySettings();
+    const userKey = `tm_privacy_${currentUser.id}`;
+    const saved = localStorage.getItem(userKey);
+    return saved ? JSON.parse(saved) : createEmptyPrivacySettings(currentUser);
   });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (currentUser?.role === 'admin_general' || currentUser?.email === 'prisma.dig.office@gmail.com') {
+      return 'admin';
+    }
+    return 'home';
+  });
   const [isSimpleMode, setIsSimpleMode] = useState<boolean>(false);
 
   // Modals state
@@ -74,26 +104,63 @@ export default function App() {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [atsReviewCv, setAtsReviewCv] = useState<CVVersion | null>(null);
 
-  // Persist to LocalStorage on updates
+  // Synchronize data when currentUser changes
   useEffect(() => {
-    localStorage.setItem('tm_master_profile', JSON.stringify(profile));
-  }, [profile]);
+    if (currentUser) {
+      const uid = currentUser.id;
+      const savedProfile = localStorage.getItem(`tm_master_profile_${uid}`);
+      setProfile(savedProfile ? JSON.parse(savedProfile) : createEmptyProfile(currentUser));
+
+      const savedCvs = localStorage.getItem(`tm_cv_versions_${uid}`);
+      setCvVersions(savedCvs ? JSON.parse(savedCvs) : createEmptyCvVersions());
+
+      const savedApps = localStorage.getItem(`tm_applications_${uid}`);
+      setApplications(savedApps ? JSON.parse(savedApps) : createEmptyApplications());
+
+      const savedDocs = localStorage.getItem(`tm_documents_${uid}`);
+      setDocuments(savedDocs ? JSON.parse(savedDocs) : createEmptyDocuments());
+
+      const savedPrivacy = localStorage.getItem(`tm_privacy_${uid}`);
+      setPrivacySettings(savedPrivacy ? JSON.parse(savedPrivacy) : createEmptyPrivacySettings(currentUser));
+
+      if (currentUser.role === 'admin_general' || currentUser.email === 'prisma.dig.office@gmail.com') {
+        setActiveTab('admin');
+      } else {
+        setActiveTab('home');
+      }
+    }
+  }, [currentUser?.id]);
+
+  // Persist to user-scoped LocalStorage on updates
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(`tm_master_profile_${currentUser.id}`, JSON.stringify(profile));
+    }
+  }, [profile, currentUser?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tm_cv_versions', JSON.stringify(cvVersions));
-  }, [cvVersions]);
+    if (currentUser) {
+      localStorage.setItem(`tm_cv_versions_${currentUser.id}`, JSON.stringify(cvVersions));
+    }
+  }, [cvVersions, currentUser?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tm_applications', JSON.stringify(applications));
-  }, [applications]);
+    if (currentUser) {
+      localStorage.setItem(`tm_applications_${currentUser.id}`, JSON.stringify(applications));
+    }
+  }, [applications, currentUser?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tm_documents', JSON.stringify(documents));
-  }, [documents]);
+    if (currentUser) {
+      localStorage.setItem(`tm_documents_${currentUser.id}`, JSON.stringify(documents));
+    }
+  }, [documents, currentUser?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tm_privacy', JSON.stringify(privacySettings));
-  }, [privacySettings]);
+    if (currentUser) {
+      localStorage.setItem(`tm_privacy_${currentUser.id}`, JSON.stringify(privacySettings));
+    }
+  }, [privacySettings, currentUser?.id]);
 
   // Auth Handlers
   const handleLoginSuccess = (user: UserAccount, credentials?: { username: string; password: string }) => {
@@ -104,23 +171,14 @@ export default function App() {
       localStorage.setItem('tm_active_creds', JSON.stringify(credentials));
       setNewCredentialsNotice(credentials);
     }
-
-    if (user.fullName && user.fullName !== 'Usuario Nuevo PRISMA') {
-      setProfile(prev => ({
-        ...prev,
-        personalInfo: {
-          ...prev.personalInfo,
-          fullName: user.fullName,
-          email: user.email,
-        },
-      }));
-    }
+    setViewMode('app');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('tm_auth_user');
     setNewCredentialsNotice(null);
+    setViewMode('presentation');
   };
 
   const handleCopyNotice = () => {
@@ -277,18 +335,45 @@ export default function App() {
   };
 
   const handleResetAllData = () => {
-    localStorage.clear();
-    setProfile(INITIAL_PROFILE);
-    setCvVersions(INITIAL_CV_VERSIONS);
-    setApplications(INITIAL_APPLICATIONS);
-    setDocuments(INITIAL_DOCUMENTS);
-    setPrivacySettings(INITIAL_PRIVACY_SETTINGS);
-    setCurrentUser(null);
+    if (currentUser) {
+      localStorage.removeItem(`tm_master_profile_${currentUser.id}`);
+      localStorage.removeItem(`tm_cv_versions_${currentUser.id}`);
+      localStorage.removeItem(`tm_applications_${currentUser.id}`);
+      localStorage.removeItem(`tm_documents_${currentUser.id}`);
+      localStorage.removeItem(`tm_privacy_${currentUser.id}`);
+      setProfile(createEmptyProfile(currentUser));
+      setCvVersions(createEmptyCvVersions());
+      setApplications(createEmptyApplications());
+      setDocuments(createEmptyDocuments());
+      setPrivacySettings(createEmptyPrivacySettings(currentUser));
+    }
   };
 
-  // If user is not logged in, show initial Authentication / Credential Generation screen
-  if (!currentUser) {
-    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
+  // If viewMode is presentation and user is not logged in:
+  if (viewMode === 'presentation' && !currentUser) {
+    return (
+      <PresentationView
+        onOpenLogin={() => {
+          setAuthInitialTab('login');
+          setViewMode('auth');
+        }}
+        onOpenRegister={() => {
+          setAuthInitialTab('register');
+          setViewMode('auth');
+        }}
+      />
+    );
+  }
+
+  // If user is not logged in or in auth view mode:
+  if (!currentUser || viewMode === 'auth') {
+    return (
+      <AuthScreen
+        initialTab={authInitialTab}
+        onBackToPresentation={() => setViewMode('presentation')}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   return (
@@ -403,6 +488,34 @@ export default function App() {
             cvVersions={cvVersions}
             applications={applications}
           />
+        )}
+
+        {activeTab === 'admin' && (
+          <AdminSupervisorDashboard
+            currentUser={currentUser}
+          />
+        )}
+
+        {activeTab === 'presentation' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3.5 bg-white border border-slate-200 rounded-2xl shadow-xs">
+              <div className="flex items-center gap-2 text-xs text-slate-700">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                <span>Estás explorando la presentación institucional de PRISMA.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab(currentUser.role === 'admin_general' ? 'admin' : 'home')}
+                className="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors"
+              >
+                Volver a mi Espacio
+              </button>
+            </div>
+            <PresentationView
+              onOpenLogin={() => setActiveTab(currentUser.role === 'admin_general' ? 'admin' : 'home')}
+              onOpenRegister={() => setActiveTab(currentUser.role === 'admin_general' ? 'admin' : 'home')}
+            />
+          </div>
         )}
       </main>
 

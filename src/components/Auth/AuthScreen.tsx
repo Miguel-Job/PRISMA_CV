@@ -5,6 +5,8 @@ import { Lock, Mail, Check, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, E
 
 interface AuthScreenProps {
   onLoginSuccess: (user: UserAccount, credentials?: { username: string; password: string }) => void;
+  initialTab?: 'login' | 'register';
+  onBackToPresentation?: () => void;
 }
 
 const COUNTRIES = [
@@ -44,8 +46,12 @@ const PROFESSIONAL_AREAS = [
   'Otro Sector Profesional',
 ];
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
-  const [tab, setTab] = useState<'login' | 'register'>('register');
+export const AuthScreen: React.FC<AuthScreenProps> = ({
+  onLoginSuccess,
+  initialTab = 'register',
+  onBackToPresentation,
+}) => {
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
   const [lang, setLang] = useState<'ES' | 'EN'>('ES');
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
@@ -349,6 +355,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         {/* Main Card Container */}
         <div className="bg-white border border-neutral-200/90 rounded-2xl shadow-xl p-5 sm:p-8 space-y-6">
 
+          {onBackToPresentation && (
+            <div className="pb-3 border-b border-neutral-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={onBackToPresentation}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950 transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-100"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Volver a la Presentación</span>
+              </button>
+              <span className="text-[11px] font-mono text-neutral-400">PRISMA Portal</span>
+            </div>
+          )}
+
           {!verificationStep ? (
             <>
               {/* Language and Form Header */}
@@ -467,6 +487,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     <span>{isLoading ? 'Verificando...' : 'Acceder al Sistema'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
+
+                  {/* Acceso Directo de Administración General */}
+                  <div className="pt-2">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+                          Administración General:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginIdentifier('prisma.dig.office@gmail.com');
+                            setLoginPassword('PrismaOffice2026!');
+                          }}
+                          className="text-blue-700 hover:text-blue-900 font-bold underline"
+                        >
+                          Completar Datos
+                        </button>
+                      </div>
+                      <p className="text-slate-600 font-mono text-[10px] leading-tight">
+                        prisma.dig.office@gmail.com · PrismaOffice2026!
+                      </p>
+                    </div>
+                  </div>
                 </form>
               ) : (
                 /* TAB 2: STRUCTURED REGISTRATION FORM (MATCHING REFERENCE IMAGE) */

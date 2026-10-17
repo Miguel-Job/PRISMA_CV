@@ -78,7 +78,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
           <div>
             <span className="text-neutral-400 block text-[11px] uppercase tracking-wider">Perfil Maestro</span>
-            <span className="font-bold text-neutral-900 text-sm">{profile.personalInfo.fullName.split(' ')[0]}</span>
+            <span className="font-bold text-neutral-900 text-sm">
+              {profile.personalInfo.fullName ? profile.personalInfo.fullName.split(' ')[0] : 'En blanco'}
+            </span>
           </div>
           <div>
             <span className="text-neutral-400 block text-[11px] uppercase tracking-wider">Versiones Activas</span>

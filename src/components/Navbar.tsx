@@ -115,6 +115,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </>
             )}
+
+            {(currentUser?.role === 'admin_general' || currentUser?.email === 'prisma.dig.office@gmail.com') && (
+              <button
+                type="button"
+                onClick={() => onTabChange('admin')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                  activeTab === 'admin'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Supervisión General</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onTabChange('presentation')}
+              className={`hover:text-neutral-900 transition-colors text-slate-500 ${
+                activeTab === 'presentation' ? 'text-neutral-900 underline underline-offset-4' : ''
+              }`}
+            >
+              Presentación
+            </button>
           </nav>
 
           {/* Zone 3: Actions (Mode switch, Country, User Profile Menu, and CTA) */}

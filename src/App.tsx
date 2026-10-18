@@ -166,10 +166,14 @@ export default function App() {
   const handleLoginSuccess = (user: UserAccount, credentials?: { username: string; password: string }) => {
     setCurrentUser(user);
     localStorage.setItem('tm_auth_user', JSON.stringify(user));
-    if (credentials) {
+    if (credentials && user.role !== 'admin_general' && user.email !== 'prisma.dig.office@gmail.com') {
       setActiveCredentials(credentials);
       localStorage.setItem('tm_active_creds', JSON.stringify(credentials));
       setNewCredentialsNotice(credentials);
+    } else {
+      setActiveCredentials(null);
+      localStorage.removeItem('tm_active_creds');
+      setNewCredentialsNotice(null);
     }
     setViewMode('app');
   };

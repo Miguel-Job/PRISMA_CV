@@ -208,27 +208,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </div>
 
-                    {/* Quick credentials copy banner */}
-                    <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-semibold text-neutral-700 flex items-center gap-1">
-                          <Key className="w-3 h-3 text-blue-600" />
-                          Credenciales de acceso:
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleCopyCredentials}
-                          className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5"
-                        >
-                          {copiedCreds ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                          {copiedCreds ? 'Copiado' : 'Copiar'}
-                        </button>
+                    {/* Quick credentials copy banner (only for regular generated users) */}
+                    {activeCredentials && currentUser.role !== 'admin_general' && currentUser.email !== 'prisma.dig.office@gmail.com' && (
+                      <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-neutral-700 flex items-center gap-1">
+                            <Key className="w-3 h-3 text-blue-600" />
+                            Credenciales de acceso:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCopyCredentials}
+                            className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5"
+                          >
+                            {copiedCreds ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            {copiedCreds ? 'Copiado' : 'Copiar'}
+                          </button>
+                        </div>
+                        <div className="font-mono text-[10px] text-neutral-600 bg-white p-1.5 rounded border border-neutral-200/80">
+                          <div>user: <strong>{currentUser.username}</strong></div>
+                          <div>pass: <strong>{activeCredentials?.password || '••••••••'}</strong></div>
+                        </div>
                       </div>
-                      <div className="font-mono text-[10px] text-neutral-600 bg-white p-1.5 rounded border border-neutral-200/80">
-                        <div>user: <strong>{currentUser.username}</strong></div>
-                        <div>pass: <strong>{activeCredentials?.password || 'Talento2026!'}</strong></div>
-                      </div>
-                    </div>
+                    )}
 
                     <button
                       type="button"

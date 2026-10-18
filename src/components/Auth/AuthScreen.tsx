@@ -487,31 +487,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     <span>{isLoading ? 'Verificando...' : 'Acceder al Sistema'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
-
-                  {/* Acceso Directo de Administración General */}
-                  <div className="pt-2">
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px]">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                          Administración General:
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginIdentifier('prisma.dig.office@gmail.com');
-                            setLoginPassword('PrismaOffice2026!');
-                          }}
-                          className="text-blue-700 hover:text-blue-900 font-bold underline"
-                        >
-                          Completar Datos
-                        </button>
-                      </div>
-                      <p className="text-slate-600 font-mono text-[10px] leading-tight">
-                        prisma.dig.office@gmail.com · PrismaOffice2026!
-                      </p>
-                    </div>
-                  </div>
                 </form>
               ) : (
                 /* TAB 2: STRUCTURED REGISTRATION FORM (MATCHING REFERENCE IMAGE) */
